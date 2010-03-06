@@ -234,7 +234,8 @@ func RetrieveIds(view, key string) []string {
         return make([]string, 0)
     }
     
-    full_url := fmt.Sprintf(`%s%s?key="%s"`, CouchDBURL(), view, key)
+    parameters = http.URLEncode(fmt.Sprintf(`key="%s"`, key))
+    full_url := fmt.Sprintf("%s%s?%s", CouchDBURL(), view, parameters)
     json_str := url_to_string(full_url)
     kvr := new(KeyedViewResponse)
     if err := from_JSON(json_str, kvr); err != nil {
