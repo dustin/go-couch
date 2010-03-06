@@ -69,9 +69,15 @@ func from_JSON(s string, p interface{}) os.Error {
 
 // Since the json pkg doesn't handle fields beginning with _, we need to
 // convert "_id" and "_rev" to "Id" and "Rev" to extract that data.
-func temp_hack_json_id_rev(json_str string) string {
+func temp_hack_go_to_json(json_str string) string {
     json_str = replace(json_str, `"Id"`, `"_id"`)
     json_str = replace(json_str, `"Rev"`, `"_rev"`)
+    return json_str
+}
+
+func temp_hack_json_to_go(json_str string) string {
+    json_str = replace(json_str, `"_id"`, `"Id"`)
+    json_str = replace(json_str, `"_rev"`, `"Rev"`)
     return json_str
 }
 
@@ -114,7 +120,7 @@ func Insert(p interface{}) (string, string, os.Error) {
     if err != nil {
         return "", "", err
     }
-    json_str = temp_hack_json_id_rev(json_str)
+    json_str = temp_hack_go_to_json(json_str)
 
     r, err := http.Post(CouchDBURL(), body_type, bytes.NewBufferString(json_str))
     if err != nil {
@@ -133,7 +139,7 @@ func Insert(p interface{}) (string, string, os.Error) {
     }
 
     if !ir.Ok {
-        return "", "", os.NewError("CouchDB returned not-OK")
+        return "", "", os.NewError(fmt.Sprintf("CouchDB returned not-OK: %v", ir))
     }
 
     return ir.Id, ir.Rev, nil
@@ -146,7 +152,7 @@ func Retrieve(id string, p interface{}) (string, os.Error) {
     }
 
     json_str := url_to_string(fmt.Sprintf("%s%s", CouchDBURL(), id))
-    json_str = temp_hack_json_id_rev(json_str)
+    json_str = temp_hack_json_to_go(json_str)
     _, rev, err := extract_id_and_rev(json_str)
     if err != nil {
         return "", err
