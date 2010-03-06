@@ -7,6 +7,7 @@ import (
     "json"
     "bytes"
     "http"
+    "net"
     "io/ioutil"
 )
 
@@ -168,9 +169,51 @@ func Edit(p interface{}) (string, os.Error) {
     return rev, err
 }
 
-//
+// Deletes document given by id and rev.
 func Delete(id, rev string) os.Error {
-    return os.NewError("delete not yet implemented")
+    // Set up request
+    var req http.Request
+    req.Method = "DELETE"
+    req.ProtoMajor = 1
+    req.ProtoMinor = 1
+    req.Close = true
+    req.Header = map[string]string {
+        "Content-Type": "application/json",
+        "If-Match": rev,
+    }
+    req.TransferEncoding = []string{"chunked"}
+    req.URL, _ = http.ParseURL(CouchDBURL() + id)
+    
+    // Make connection
+    conn, err := net.Dial("tcp", "", CouchDBHost + ":" + CouchDBPort)
+    if err != nil {
+        return err
+    }
+    http_conn := http.NewClientConn(conn, nil)
+    defer http_conn.Close()
+    if err := http_conn.Write(&req); err != nil {
+        return err
+    }
+    
+    // Read response
+    r, err := http_conn.Read()
+    if r == nil {
+        return os.NewError("no response")
+    }
+    if err != nil {
+        return err
+    }
+    data, _ := ioutil.ReadAll(r.Body)
+    r.Body.Close()
+    ir := new(InsertResponse)
+    if ok, _ := json.Unmarshal(string(data), ir); !ok {
+        return os.NewError("error unmarshaling response")
+    }
+    if !ir.Ok {
+        return os.NewError("CouchDB returned not-OK")
+    }
+    
+    return nil
 }
 
 type Row struct {
