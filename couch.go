@@ -14,12 +14,7 @@ var (
     CouchDBHost = "localhost"
     CouchDBPort = "5984"
     CouchDBName = "exampledb"
-    CouchDBURL  = ""
 )
-
-func init() {
-    CouchDBURL = fmt.Sprintf("http://%s:%s/%s/", CouchDBHost, CouchDBPort, CouchDBName)
-}
 
 //
 // Helper and utility functions (private)
@@ -101,6 +96,10 @@ func extract_id_and_rev(json_str string) (string, string, os.Error) {
 //
 
 
+func CouchDBURL() string {
+    return fmt.Sprintf("http://%s:%s/%s/", CouchDBHost, CouchDBPort, CouchDBName)
+}
+
 type InsertResponse struct {
     Ok  bool
     Id  string
@@ -117,7 +116,7 @@ func Insert(p interface{}) (string, string, os.Error) {
     }
     json_str = temp_hack_json_id_rev(json_str)
 
-    r, err := http.Post(CouchDBURL, body_type, bytes.NewBufferString(json_str))
+    r, err := http.Post(CouchDBURL(), body_type, bytes.NewBufferString(json_str))
     if err != nil {
         return "", "", err
     }
@@ -146,7 +145,7 @@ func Retrieve(id string, p interface{}) (string, os.Error) {
         return "", os.NewError("no id specified")
     }
 
-    json_str := url_to_string(fmt.Sprintf("%s%s", CouchDBURL, id))
+    json_str := url_to_string(fmt.Sprintf("%s%s", CouchDBURL(), id))
     json_str = temp_hack_json_id_rev(json_str)
     _, rev, err := extract_id_and_rev(json_str)
     if err != nil {
@@ -186,7 +185,7 @@ func RetrieveIds(view, key string) []string {
         return make([]string, 0)
     }
     
-    full_url := fmt.Sprintf(`%s%s?key="%s"`, CouchDBURL, view, key)
+    full_url := fmt.Sprintf(`%s%s?key="%s"`, CouchDBURL(), view, key)
     json_str := url_to_string(full_url)
     kvr := new(KeyedViewResponse)
     if err := from_JSON(json_str, kvr); err != nil {
