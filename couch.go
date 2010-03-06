@@ -163,3 +163,39 @@ func Edit(p interface{}) (string, os.Error) {
     return rev, err
 }
 
+//
+func Delete(id, rev string) os.Error {
+    return os.NewError("delete not yet implemented")
+}
+
+type Row struct {
+    Id  string
+    Key string
+}
+
+type KeyedViewResponse struct {
+    Total_rows uint64
+    Offset     uint64
+    Rows       []Row
+}
+
+// Return array of document ids as returned by the given view, by given key.
+func RetrieveIds(view, key string) []string {
+    // view should be eg. "_design/my_foo/_view/my_bar"
+    if len(view) <= 0 || len(key) <= 0 {
+        return make([]string, 0)
+    }
+    
+    full_url := fmt.Sprintf(`%s%s?key="%s"`, CouchDBURL, view, key)
+    json_str := url_to_string(full_url)
+    kvr := new(KeyedViewResponse)
+    if err := from_JSON(json_str, kvr); err != nil {
+        return make([]string, 0)
+    }
+    
+    ids := make([]string, len(kvr.Rows))
+    for i, row := range kvr.Rows {
+        ids[i] = row.Id
+    }
+    return ids    
+}
