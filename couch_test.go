@@ -96,3 +96,4 @@ func TestDelete(t *testing.T) {
         t.Fatalf("failed to delete record: %s", err)
     }
 }
+
