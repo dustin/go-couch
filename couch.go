@@ -140,7 +140,7 @@ func Insert(p interface{}) (string, string, os.Error) {
     }
 
     if !ir.Ok {
-        return "", "", os.NewError(fmt.Sprintf("CouchDB returned not-OK: %v", ir))
+        return "", "", os.NewError("CouchDB returned not-OK")
     }
 
     return ir.Id, ir.Rev, nil
