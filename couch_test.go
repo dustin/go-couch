@@ -39,14 +39,14 @@ func TestConnectivity(t *testing.T) {
     di := new(DatabaseInfo)
     if _, err := Retrieve("/", di); err != nil {
         t.Fatalf("error contacting %s DB (is CouchDB running?)", CouchDBName, err)
-    } 
+    }
     if di.Db_name != CouchDBName {
-        t.Fatalf("error connecting to %s DB (did you create it?)", CouchDBName) 
+        t.Fatalf("error connecting to %s DB (did you create it?)", CouchDBName)
     }
 }
 
 func TestInsert(t *testing.T) {
-    r := Record{ 12345, []string{"alpha", "beta", "delta"} }
+    r := Record{12345, []string{"alpha", "beta", "delta"}}
     _, _, err := Insert(r)
     if err != nil {
         t.Fatalf("failed to insert record: %s", err)
@@ -54,7 +54,7 @@ func TestInsert(t *testing.T) {
 }
 
 func TestRetrieve(t *testing.T) {
-    r := Record{ 999, []string{"kappa", "gamma"} }
+    r := Record{999, []string{"kappa", "gamma"}}
     id, _, err := Insert(r)
     if err != nil {
         t.Fatalf("failed to insert record: %s", err)
@@ -79,7 +79,7 @@ func TestRetrieve(t *testing.T) {
 }
 
 func TestEdit(t *testing.T) {
-    r := Record{ 10101, []string{"iota", "omicron", "nu"} }
+    r := Record{10101, []string{"iota", "omicron", "nu"}}
     id, _, err := Insert(r)
     if err != nil {
         t.Fatalf("failed to insert record: %s", err)
@@ -95,7 +95,7 @@ func TestEdit(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-    r := Record{ 321, []string{"zeta", "phi"} }
+    r := Record{321, []string{"zeta", "phi"}}
     id, rev, err := Insert(r)
     if err != nil {
         t.Fatalf("failed to insert record: %s", err)

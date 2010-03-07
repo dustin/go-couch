@@ -14,5 +14,5 @@ include $(GOROOT)/src/Make.pkg
 
 format:
 	${GOFMT} -w couch.go
-    $(GOFMT) -w couch_test.go
+	$(GOFMT) -w couch_test.go
 

@@ -177,15 +177,15 @@ func Delete(id, rev string) os.Error {
     req.ProtoMajor = 1
     req.ProtoMinor = 1
     req.Close = true
-    req.Header = map[string]string {
+    req.Header = map[string]string{
         "Content-Type": "application/json",
-        "If-Match": rev,
+        "If-Match":     rev,
     }
     req.TransferEncoding = []string{"chunked"}
     req.URL, _ = http.ParseURL(CouchDBURL() + id)
-    
+
     // Make connection
-    conn, err := net.Dial("tcp", "", CouchDBHost + ":" + CouchDBPort)
+    conn, err := net.Dial("tcp", "", CouchDBHost+":"+CouchDBPort)
     if err != nil {
         return err
     }
@@ -194,7 +194,7 @@ func Delete(id, rev string) os.Error {
     if err := http_conn.Write(&req); err != nil {
         return err
     }
-    
+
     // Read response
     r, err := http_conn.Read()
     if r == nil {
@@ -212,7 +212,7 @@ func Delete(id, rev string) os.Error {
     if !ir.Ok {
         return os.NewError("CouchDB returned not-OK")
     }
-    
+
     return nil
 }
 
@@ -233,7 +233,7 @@ func RetrieveIds(view, key string) []string {
     if len(view) <= 0 || len(key) <= 0 {
         return make([]string, 0)
     }
-    
+
     parameters := fmt.Sprintf(`key="%s"`, http.URLEscape(key))
     full_url := fmt.Sprintf("%s%s?%s", CouchDBURL(), view, parameters)
     json_str := url_to_string(full_url)
@@ -241,10 +241,10 @@ func RetrieveIds(view, key string) []string {
     if err := from_JSON(json_str, kvr); err != nil {
         return make([]string, 0)
     }
-    
+
     ids := make([]string, len(kvr.Rows))
     for i, row := range kvr.Rows {
         ids[i] = row.Id
     }
-    return ids    
+    return ids
 }
