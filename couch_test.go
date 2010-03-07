@@ -38,7 +38,7 @@ type DatabaseInfo struct {
 func TestConnectivity(t *testing.T) {
     di := new(DatabaseInfo)
     if _, err := Retrieve("/", di); err != nil {
-        t.Fatalf("error contacting %s DB (is CouchDB running?)", CouchDBName, err)
+        t.Fatalf("error contacting %s DB (is CouchDB running?)", CouchDBName)
     }
     if di.Db_name != CouchDBName {
         t.Fatalf("error connecting to %s DB (did you create it?)", CouchDBName)
@@ -47,8 +47,7 @@ func TestConnectivity(t *testing.T) {
 
 func TestInsert(t *testing.T) {
     r := Record{12345, []string{"alpha", "beta", "delta"}}
-    _, _, err := Insert(r)
-    if err != nil {
+    if _, _, err := Insert(r); err != nil {
         t.Fatalf("failed to insert record: %s", err)
     }
 }
