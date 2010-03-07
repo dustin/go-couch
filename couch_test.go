@@ -5,30 +5,11 @@ import (
     "reflect"
 )
 
-type Record struct {
-    Foo  int64
-    Bars []string
-}
-
-type DBRecord struct {
-    Id   string
-    Rev  string
-    Foo  int64
-    Bars []string
-}
-
-
 // IMPORTANT! These must be set correctly for the tests to succeed.
-const (
-    TestDBHost = "localhost"
-    TestDBPort = "5984"
-    TestDBName = "testdb"
-)
-
 func init() {
-    CouchDBHost = TestDBHost
-    CouchDBPort = TestDBPort
-    CouchDBName = TestDBName
+    CouchDBHost = "localhost"
+    CouchDBPort = "5984"
+    CouchDBName = "testdb"
 }
 
 type DatabaseInfo struct {
@@ -43,6 +24,18 @@ func TestConnectivity(t *testing.T) {
     if di.Db_name != CouchDBName {
         t.Fatalf("error connecting to %s DB (did you create it?)", CouchDBName)
     }
+}
+
+type Record struct {
+    Foo  int64
+    Bars []string
+}
+
+type DBRecord struct {
+    Id   string
+    Rev  string
+    Foo  int64
+    Bars []string
 }
 
 func TestInsert(t *testing.T) {
