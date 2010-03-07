@@ -206,8 +206,8 @@ func Delete(id, rev string) os.Error {
     data, _ := ioutil.ReadAll(r.Body)
     r.Body.Close()
     ir := new(InsertResponse)
-    if ok, _ := json.Unmarshal(string(data), ir); !ok {
-        return os.NewError("error unmarshaling response")
+    if err := from_JSON(string(data), ir); err != nil {
+        return err
     }
     if !ir.Ok {
         return os.NewError("CouchDB returned not-OK")
@@ -234,7 +234,7 @@ func RetrieveIds(view, key string) []string {
         return make([]string, 0)
     }
     
-    parameters = http.URLEncode(fmt.Sprintf(`key="%s"`, key))
+    parameters := fmt.Sprintf(`key="%s"`, http.URLEscape(key))
     full_url := fmt.Sprintf("%s%s?%s", CouchDBURL(), view, parameters)
     json_str := url_to_string(full_url)
     kvr := new(KeyedViewResponse)
