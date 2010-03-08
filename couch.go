@@ -11,12 +11,6 @@ import (
     "io/ioutil"
 )
 
-var (
-    CouchDBHost = "localhost"
-    CouchDBPort = "5984"
-    CouchDBName = "exampledb"
-)
-
 //
 // Helper and utility functions (private)
 //
@@ -97,14 +91,60 @@ func extract_id_and_rev(json_str string) (string, string, os.Error) {
     return id_rev.Id, id_rev.Rev, nil
 }
 
-
 //
-// Interface functions (public)
+// Database object + public methods
 //
 
+type Database struct {
+    Host string
+    Port string
+    Name string
+}
 
-func CouchDBURL() string {
-    return fmt.Sprintf("http://%s:%s/%s/", CouchDBHost, CouchDBPort, CouchDBName)
+func (p Database) BaseURL() string {
+    return fmt.Sprintf("http://%s:%s", p.Host, p.Port)
+}
+
+func (p Database) DBURL() string {
+    return fmt.Sprintf("%s/%s", p.BaseURL(), p.Name)
+}
+
+// Test whether CouchDB is running (ignores Database.Name)
+func (p Database) Running() bool {
+    url := fmt.Sprintf("%s/%s", p.BaseURL(), "_all_dbs")
+    s := url_to_string(url)
+    if len(s) > 0 {
+        return true
+    }
+    return false
+}
+
+type DatabaseInfo struct {
+    Db_name string
+    // other stuff too, ignore for now
+} 
+
+// Test whether specified database exists in specified CouchDB instance
+func (p Database) Exists() bool {
+    di := new(DatabaseInfo)
+    if err := from_JSON(url_to_string(p.DBURL()), di); err != nil {
+        return false
+    }
+    if di.Db_name != p.Name {
+        return false
+    }
+    return true
+}
+
+func NewDatabase(host, port, name string) (Database, os.Error) {
+    db := Database{host, port, name}
+    if !db.Running() {
+        return db, os.NewError("CouchDB not running")
+    }
+    if !db.Exists() {
+        // TODO create database
+    }
+    return db, nil
 }
 
 type InsertResponse struct {
@@ -113,17 +153,15 @@ type InsertResponse struct {
     Rev string
 }
 
-// Inserts document to CouchDB, returning id and rev on success. The document
-// interface may optionally specify an "Id" field.
-func Insert(p interface{}) (string, string, os.Error) {
-    body_type := "application/json"
-    json_str, err := to_JSON(p)
+// Inserts document to CouchDB, returning id and rev on success.
+func (p Database) Insert(d interface{}) (string, string, os.Error) {
+    json_str, err := to_JSON(d)
     if err != nil {
         return "", "", err
     }
     json_str = temp_hack_go_to_json(json_str)
-
-    r, err := http.Post(CouchDBURL(), body_type, bytes.NewBufferString(json_str))
+    
+    r, err := http.Post(p.DBURL(), "application/json", bytes.NewBufferString(json_str))
     if err != nil {
         return "", "", err
     }
@@ -147,30 +185,30 @@ func Insert(p interface{}) (string, string, os.Error) {
 }
 
 // Unmarshals the document matching id to the given interface, returning rev.
-func Retrieve(id string, p interface{}) (string, os.Error) {
+func (p Database) Retrieve(id string, d interface{}) (string, os.Error) {
     if len(id) <= 0 {
         return "", os.NewError("no id specified")
     }
-
-    json_str := url_to_string(fmt.Sprintf("%s%s", CouchDBURL(), id))
+    
+    json_str := url_to_string(fmt.Sprintf("%s/%s", p.DBURL(), id))
     json_str = temp_hack_json_to_go(json_str)
     _, rev, err := extract_id_and_rev(json_str)
     if err != nil {
         return "", err
     }
-
-    return rev, from_JSON(json_str, p)
+    
+    return rev, from_JSON(json_str, d)
 }
 
-// Edits the given document, which must specify both id and rev fields (as "Id"
-// and "Rev"), and returns the new rev.
-func Edit(p interface{}) (string, os.Error) {
-    _, rev, err := Insert(p)
+// Edits the given document, which must specify both Id and Rev fields, and
+// returns the new revision.
+func (p Database) Edit(d interface{}) (string, os.Error) {
+    _, rev, err := p.Insert(d)
     return rev, err
 }
 
 // Deletes document given by id and rev.
-func Delete(id, rev string) os.Error {
+func (p Database) Delete(id, rev string) os.Error {
     // Set up request
     var req http.Request
     req.Method = "DELETE"
@@ -182,10 +220,10 @@ func Delete(id, rev string) os.Error {
         "If-Match":     rev,
     }
     req.TransferEncoding = []string{"chunked"}
-    req.URL, _ = http.ParseURL(CouchDBURL() + id)
+    req.URL, _ = http.ParseURL(fmt.Sprintf("%s/%s", p.DBURL(), id))
 
     // Make connection
-    conn, err := net.Dial("tcp", "", CouchDBHost+":"+CouchDBPort)
+    conn, err := net.Dial("tcp", "", fmt.Sprintf("%s:%s", p.Host, p.Port))
     if err != nil {
         return err
     }
@@ -227,25 +265,24 @@ type KeyedViewResponse struct {
     Rows       []Row
 }
 
-// Return array of document ids as returned by the given view, by given key.
-func RetrieveIds(view, key string) []string {
-    // view should be eg. "_design/my_foo/_view/my_bar"
+// Return array of document ids as returned by the given view/key combo.
+// view should be eg. "_design/my_foo/_view/my_bar"
+func (p Database) QueryByView(view, key string) ([]string, os.Error) {
     if len(view) <= 0 || len(key) <= 0 {
-        return make([]string, 0)
+        return make([]string, 0), os.NewError("empty view or key")
     }
 
     parameters := fmt.Sprintf(`key="%s"`, http.URLEscape(key))
-    full_url := fmt.Sprintf("%s%s?%s", CouchDBURL(), view, parameters)
+    full_url := fmt.Sprintf("%s/%s?%s", p.DBURL(), view, parameters)
     json_str := url_to_string(full_url)
     kvr := new(KeyedViewResponse)
     if err := from_JSON(json_str, kvr); err != nil {
-        return make([]string, 0)
+        return make([]string, 0), err
     }
 
     ids := make([]string, len(kvr.Rows))
     for i, row := range kvr.Rows {
         ids[i] = row.Id
     }
-    return ids
+    return ids, nil
 }
-
