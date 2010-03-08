@@ -91,6 +91,55 @@ func extract_id_and_rev(json_str string) (string, string, os.Error) {
     return id_rev.Id, id_rev.Rev, nil
 }
 
+type CreateResponse struct {
+    Ok bool
+}
+
+func (p Database) create_database() os.Error {
+    // Set up request
+    var req http.Request
+    req.Method = "PUT"
+    req.ProtoMajor = 1
+    req.ProtoMinor = 1
+    req.Close = true
+    req.Header = map[string]string{
+        "Content-Type": "application/json",
+    }
+    req.TransferEncoding = []string{"chunked"}
+    req.URL, _ = http.ParseURL(p.DBURL())
+
+    // Make connection
+    conn, err := net.Dial("tcp", "", fmt.Sprintf("%s:%s", p.Host, p.Port))
+    if err != nil {
+        return err
+    }
+    http_conn := http.NewClientConn(conn, nil)
+    defer http_conn.Close()
+    if err := http_conn.Write(&req); err != nil {
+        return err
+    }
+
+    // Read response
+    r, err := http_conn.Read()
+    if r == nil {
+        return os.NewError("no response")
+    }
+    if err != nil {
+        return err
+    }
+    data, _ := ioutil.ReadAll(r.Body)
+    r.Body.Close()
+    cr := new(CreateResponse)
+    if err := from_JSON(string(data), cr); err != nil {
+        return err
+    }
+    if !cr.Ok {
+        return os.NewError("CouchDB returned not-OK")
+    }
+
+    return nil
+}
+
 //
 // Database object + public methods
 //
@@ -142,7 +191,9 @@ func NewDatabase(host, port, name string) (Database, os.Error) {
         return db, os.NewError("CouchDB not running")
     }
     if !db.Exists() {
-        // TODO create database
+        if err := db.create_database(); err != nil {
+            return db, err
+        }
     }
     return db, nil
 }
