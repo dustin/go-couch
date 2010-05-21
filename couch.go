@@ -46,20 +46,19 @@ func url_to_string(url string) string {
 }
 
 // Marshal given interface to JSON string
-func to_JSON(p interface{}) (string, os.Error) {
-    buf := new(bytes.Buffer)
-    if err := json.Marshal(buf, p); err != nil {
-        return "", err
+func to_JSON(p interface{}) (result string, err os.Error) {
+    err = nil
+    result = ""
+    if buf, err := json.Marshal(p); err == nil {
+        result = string(buf)
     }
-    return buf.String(), nil
+    return
 }
 
 // Unmarshal JSON string to given interface
-func from_JSON(s string, p interface{}) os.Error {
-    if ok, errtok := json.Unmarshal(s, p); !ok {
-        return os.NewError(fmt.Sprintf("error unmarshaling: %s", errtok))
-    }
-    return nil
+func from_JSON(s string, p interface{}) (err os.Error) {
+    err = json.Unmarshal([]byte(s), p)
+    return
 }
 
 // Since the json pkg doesn't handle fields beginning with _, we need to
