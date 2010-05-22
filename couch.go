@@ -234,19 +234,25 @@ func (p Database) Insert(d interface{}) (string, string, os.Error) {
     return ir.Id, ir.Rev, nil
 }
 
+type RetrieveError struct {
+    Error string
+    Reason string
+}
+
 // Unmarshals the document matching id to the given interface, returning rev.
 func (p Database) Retrieve(id string, d interface{}) (string, os.Error) {
     if len(id) <= 0 {
         return "", os.NewError("no id specified")
     }
-    
     json_str := url_to_string(fmt.Sprintf("%s/%s", p.DBURL(), id))
     json_str = temp_hack_json_to_go(json_str)
-    _, rev, err := extract_id_and_rev(json_str)
+    retrieved_id, rev, err := extract_id_and_rev(json_str)
     if err != nil {
         return "", err
     }
-    
+    if retrieved_id != id {
+        return "", os.NewError("invalid id specified")
+    }
     return rev, from_JSON(json_str, d)
 }
 
@@ -315,21 +321,35 @@ type KeyedViewResponse struct {
     Rows       []Row
 }
 
-// Return array of document ids as returned by the given view/key combo.
+// Return array of document ids as returned by the given view/options combo.
 // view should be eg. "_design/my_foo/_view/my_bar"
-func (p Database) QueryByView(view, key string) ([]string, os.Error) {
-    if len(view) <= 0 || len(key) <= 0 {
-        return make([]string, 0), os.NewError("empty view or key")
+// options should be eg. { "limit": 10, "key": "baz" }
+func (p Database) QueryWithOptions(view string, options map[string]interface{}) ([]string, os.Error) {
+    if len(view) <= 0 {
+        return make([]string, 0), os.NewError("empty view")
     }
-
-    parameters := fmt.Sprintf(`key="%s"`, http.URLEscape(key))
+    
+    parameters := ""
+    for k, v := range options {
+        switch t := v.(type) {
+        case string:
+            parameters += fmt.Sprintf(`%s="%s"&`, k, http.URLEscape(t))
+        case int:
+            parameters += fmt.Sprintf(`%s=%d&`, k, t)
+        case bool:
+            parameters += fmt.Sprintf(`%s=%v&`, k, t)
+        default:
+            // TODO more types are supported
+            panic(fmt.Sprintf("unsupported value-type %T in QueryWithOptions", t))
+        }
+    }
     full_url := fmt.Sprintf("%s/%s?%s", p.DBURL(), view, parameters)
     json_str := url_to_string(full_url)
     kvr := new(KeyedViewResponse)
     if err := from_JSON(json_str, kvr); err != nil {
         return make([]string, 0), err
     }
-
+    
     ids := make([]string, len(kvr.Rows))
     for i, row := range kvr.Rows {
         ids[i] = row.Id
