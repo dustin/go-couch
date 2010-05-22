@@ -210,27 +210,79 @@ func (p Database) Insert(d interface{}) (string, string, os.Error) {
         return "", "", err
     }
     json_str = temp_hack_go_to_json(json_str)
-    
     r, err := http.Post(p.DBURL(), "application/json", bytes.NewBufferString(json_str))
     if err != nil {
         return "", "", err
     }
-
     b, err := ioutil.ReadAll(r.Body)
     r.Body.Close()
     if err != nil {
         return "", "", err
     }
-
     ir := new(InsertResponse)
     if err := from_JSON(string(b), ir); err != nil {
         return "", "", err
     }
-
     if !ir.Ok {
         return "", "", os.NewError("CouchDB returned not-OK")
     }
+    return ir.Id, ir.Rev, nil
+}
 
+// Like Insert, but overwrites existing document, returning old id and new rev.
+// Passed document struct MUST contain Id and Rev fields!
+func (p Database) Overwrite(d interface{}) (string, string, os.Error) {
+    json_str, err := to_JSON(d)
+    if err != nil {
+        return "", "", err
+    }
+    id_rev := new(IdAndRev)
+    err = from_JSON(json_str, id_rev)
+    if err != nil {
+        return "", "", err
+    }
+    if len(id_rev.Id) <= 0 || len(id_rev.Rev) <= 0 {
+        return "", "", os.NewError("Id and/or Rev not specified in interface")
+    }
+    json_str = temp_hack_go_to_json(json_str)
+    // Set up request
+    var req http.Request
+    req.Method = "PUT"
+    req.ProtoMajor = 1
+    req.ProtoMinor = 1
+    req.Close = true
+    req.Header = map[string]string{
+        "Content-Type": "application/json",
+    }
+    req.TransferEncoding = []string{"chunked"}
+    req.URL, _ = http.ParseURL(fmt.Sprintf("%s/%s", p.DBURL(), id_rev.Id))
+    // Make connection
+    conn, err := net.Dial("tcp", "", fmt.Sprintf("%s:%s", p.Host, p.Port))
+    if err != nil {
+        return "", "", err
+    }
+    http_conn := http.NewClientConn(conn, nil)
+    defer http_conn.Close()
+    if err := http_conn.Write(&req); err != nil {
+        return "", "", err
+    }
+    // Read response
+    r, err := http_conn.Read()
+    if r == nil {
+        return "", "", os.NewError("no response")
+    }
+    if err != nil {
+        return "", "", err
+    }
+    data, _ := ioutil.ReadAll(r.Body)
+    r.Body.Close()
+    ir := new(InsertResponse)
+    if err := from_JSON(string(data), ir); err != nil {
+        return "", "", err
+    }
+    if !ir.Ok {
+        return "", "", os.NewError("CouchDB returned not-OK")
+    }
     return ir.Id, ir.Rev, nil
 }
 

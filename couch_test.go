@@ -83,9 +83,16 @@ func TestEdit(t *testing.T) {
     if _, err := db.Retrieve(id, db_r); err != nil {
         t.Fatalf("failed to retrieve record: %s", err)
     }
-    db_r.Foo = 1
+    db_r.Foo = 34
     if _, err := db.Edit(db_r); err != nil {
         t.Fatalf("failed to edit record: %s", err)
+    }
+    r2 := new(Record)
+    if _, err := db.Retrieve(id, r2); err != nil {
+        t.Fatalf("failed to re-retrieve record: %s", err)
+    }
+    if r2.Foo != 34 {
+        t.Fatalf("failed to save the change in Edit: Foo=%d, expected %d", r2.Foo, 34)
     }
 }
 
