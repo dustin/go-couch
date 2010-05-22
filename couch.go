@@ -324,7 +324,7 @@ type KeyedViewResponse struct {
 // Return array of document ids as returned by the given view/options combo.
 // view should be eg. "_design/my_foo/_view/my_bar"
 // options should be eg. { "limit": 10, "key": "baz" }
-func (p Database) QueryWithOptions(view string, options map[string]interface{}) ([]string, os.Error) {
+func (p Database) Query(view string, options map[string]interface{}) ([]string, os.Error) {
     if len(view) <= 0 {
         return make([]string, 0), os.NewError("empty view")
     }
@@ -340,7 +340,7 @@ func (p Database) QueryWithOptions(view string, options map[string]interface{}) 
             parameters += fmt.Sprintf(`%s=%v&`, k, t)
         default:
             // TODO more types are supported
-            panic(fmt.Sprintf("unsupported value-type %T in QueryWithOptions", t))
+            panic(fmt.Sprintf("unsupported value-type %T in Query", t))
         }
     }
     full_url := fmt.Sprintf("%s/%s?%s", p.DBURL(), view, parameters)
