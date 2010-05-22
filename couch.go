@@ -139,6 +139,24 @@ func (p Database) create_database() os.Error {
     return nil
 }
 
+type stringCloser struct {
+    s string
+    pos int
+}
+
+func (sc stringCloser) Close() os.Error { return nil }
+func (sc stringCloser) Read(p []byte) (int, os.Error) {
+    i := 0
+    for i = 0 ; i < len(p) && i < len(sc.s) ; i++ {
+        p[i] = sc.s[i]
+        sc.pos++
+    }
+    if sc.pos == len(sc.s) {
+        return i, os.EOF
+    }
+    return i, nil
+}
+
 //
 // Database object + public methods
 //
@@ -229,20 +247,20 @@ func (p Database) Insert(d interface{}) (string, string, os.Error) {
     return ir.Id, ir.Rev, nil
 }
 
-// Like Insert, but overwrites existing document, returning old id and new rev.
-// Passed document struct MUST contain Id and Rev fields!
-func (p Database) Overwrite(d interface{}) (string, string, os.Error) {
+// Edits the given document, which must specify both Id and Rev fields, and
+// returns the new revision.
+func (p Database) Edit(d interface{}) (string, os.Error) {
     json_str, err := to_JSON(d)
     if err != nil {
-        return "", "", err
+        return "", err
     }
     id_rev := new(IdAndRev)
     err = from_JSON(json_str, id_rev)
     if err != nil {
-        return "", "", err
+        return "", err
     }
     if len(id_rev.Id) <= 0 || len(id_rev.Rev) <= 0 {
-        return "", "", os.NewError("Id and/or Rev not specified in interface")
+        return "", os.NewError("Id and/or Rev not specified in interface")
     }
     json_str = temp_hack_go_to_json(json_str)
     // Set up request
@@ -256,34 +274,36 @@ func (p Database) Overwrite(d interface{}) (string, string, os.Error) {
     }
     req.TransferEncoding = []string{"chunked"}
     req.URL, _ = http.ParseURL(fmt.Sprintf("%s/%s", p.DBURL(), id_rev.Id))
+    req.Body = stringCloser{json_str, 0}
+    
     // Make connection
     conn, err := net.Dial("tcp", "", fmt.Sprintf("%s:%s", p.Host, p.Port))
     if err != nil {
-        return "", "", err
+        return "", err
     }
     http_conn := http.NewClientConn(conn, nil)
     defer http_conn.Close()
     if err := http_conn.Write(&req); err != nil {
-        return "", "", err
+        return "", err
     }
     // Read response
     r, err := http_conn.Read()
     if r == nil {
-        return "", "", os.NewError("no response")
+        return "", os.NewError("no response")
     }
     if err != nil {
-        return "", "", err
+        return "", err
     }
     data, _ := ioutil.ReadAll(r.Body)
     r.Body.Close()
     ir := new(InsertResponse)
     if err := from_JSON(string(data), ir); err != nil {
-        return "", "", err
+        return "", err
     }
     if !ir.Ok {
-        return "", "", os.NewError("CouchDB returned not-OK")
+        return "", os.NewError("CouchDB returned not-OK")
     }
-    return ir.Id, ir.Rev, nil
+    return ir.Rev, nil
 }
 
 type RetrieveError struct {
@@ -306,13 +326,6 @@ func (p Database) Retrieve(id string, d interface{}) (string, os.Error) {
         return "", os.NewError("invalid id specified")
     }
     return rev, from_JSON(json_str, d)
-}
-
-// Edits the given document, which must specify both Id and Rev fields, and
-// returns the new revision.
-func (p Database) Edit(d interface{}) (string, os.Error) {
-    _, rev, err := p.Insert(d)
-    return rev, err
 }
 
 // Deletes document given by id and rev.
