@@ -262,8 +262,8 @@ func (p Database) Edit(d interface{}) (string, os.Error) {
     if err != nil {
         return "", err
     }
-    if len(id_rev.Id) <= 0 || len(id_rev.Rev) <= 0 {
-        return "", os.NewError("Id and/or Rev not specified in interface")
+    if len(id_rev.Id) <= 0 {
+        return "", os.NewError("Id not specified in interface")
     }
     json_str = temp_hack_go_to_json(json_str)
     // Set up request
