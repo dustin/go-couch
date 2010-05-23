@@ -66,12 +66,14 @@ func from_JSON(s string, p interface{}) (err os.Error) {
 func temp_hack_go_to_json(json_str string) string {
     json_str = replace(json_str, `"Id"`, `"_id"`)
     json_str = replace(json_str, `"Rev"`, `"_rev"`)
+    json_str = replace(json_str, `"Views"`, `"views"`)
     return json_str
 }
 
 func temp_hack_json_to_go(json_str string) string {
     json_str = replace(json_str, `"_id"`, `"Id"`)
     json_str = replace(json_str, `"_rev"`, `"Rev"`)
+    json_str = replace(json_str, `"views"`, `"Views"`)
     return json_str
 }
 
@@ -145,6 +147,7 @@ type stringCloser struct {
 }
 
 func (sc stringCloser) Close() os.Error { return nil }
+
 func (sc stringCloser) Read(p []byte) (int, os.Error) {
     i := 0
     for i = 0 ; i < len(p) && i < len(sc.s) ; i++ {
