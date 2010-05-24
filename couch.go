@@ -142,7 +142,7 @@ func (p Database) create_database() os.Error {
 }
 
 type stringCloser struct {
-    s string
+    s   string
     pos int
 }
 
@@ -150,7 +150,7 @@ func (sc stringCloser) Close() os.Error { return nil }
 
 func (sc stringCloser) Read(p []byte) (int, os.Error) {
     i := 0
-    for i = 0 ; i < len(p) && i < len(sc.s) ; i++ {
+    for i = 0; i < len(p) && i < len(sc.s); i++ {
         p[i] = sc.s[i]
         sc.pos++
     }
@@ -191,7 +191,7 @@ func (p Database) Running() bool {
 type DatabaseInfo struct {
     Db_name string
     // other stuff too, ignore for now
-} 
+}
 
 // Test whether specified database exists in specified CouchDB instance
 func (p Database) Exists() bool {
@@ -278,7 +278,7 @@ func (p Database) Edit(d interface{}) (string, os.Error) {
     req.TransferEncoding = []string{"chunked"}
     req.URL, _ = http.ParseURL(fmt.Sprintf("%s/%s", p.DBURL(), id_rev.Id))
     req.Body = stringCloser{json_str, 0}
-    
+
     // Make connection
     conn, err := net.Dial("tcp", "", fmt.Sprintf("%s:%s", p.Host, p.Port))
     if err != nil {
@@ -310,7 +310,7 @@ func (p Database) Edit(d interface{}) (string, os.Error) {
 }
 
 type RetrieveError struct {
-    Error string
+    Error  string
     Reason string
 }
 
@@ -396,7 +396,7 @@ func (p Database) Query(view string, options map[string]interface{}) ([]string, 
     if len(view) <= 0 {
         return make([]string, 0), os.NewError("empty view")
     }
-    
+
     parameters := ""
     for k, v := range options {
         switch t := v.(type) {
@@ -417,7 +417,7 @@ func (p Database) Query(view string, options map[string]interface{}) ([]string, 
     if err := from_JSON(json_str, kvr); err != nil {
         return make([]string, 0), err
     }
-    
+
     ids := make([]string, len(kvr.Rows))
     for i, row := range kvr.Rows {
         ids[i] = row.Id
