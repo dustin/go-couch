@@ -17,7 +17,7 @@ import (
 
 // Replaces all instances of from with to in s (quite inefficient right now)
 func replace(s, from, to string) string {
-    toks := strings.SplitAfter(s, from, 0)
+    toks := strings.SplitAfter(s, from, -1)
     newstr := ""
     for i, tok := range toks {
         if i < len(toks)-1 {
