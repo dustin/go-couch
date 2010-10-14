@@ -23,8 +23,8 @@ type Record struct {
 }
 
 type DBRecord struct {
-    Id   string
-    Rev  string
+    Id   string  "_id"
+    Rev  string  "_rev"
     Foo  int64
     Bars []string
 }
@@ -35,7 +35,7 @@ func TestInsert(t *testing.T) {
         t.Fatalf("error connecting to CouchDB: %s", err)
     }
     r := Record{12345, []string{"alpha", "beta", "delta"}}
-    if _, _, err := db.Insert(r); err != nil {
+    if _, _, err := db.Insert(r, nil); err != nil {
         t.Fatalf("failed to insert record: %s", err)
     }
 }
@@ -46,7 +46,7 @@ func TestRetrieve(t *testing.T) {
         t.Fatalf("error connecting to CouchDB: %s", err)
     }
     r := Record{999, []string{"kappa", "gamma"}}
-    id, _, err := db.Insert(r)
+    id, _, err := db.Insert(r, nil)
     if err != nil {
         t.Fatalf("failed to insert record: %s", err)
     }
@@ -75,7 +75,7 @@ func TestEdit(t *testing.T) {
         t.Fatalf("error connecting to CouchDB: %s", err)
     }
     r := Record{10101, []string{"iota", "omicron", "nu"}}
-    id, _, err := db.Insert(r)
+    id, _, err := db.Insert(r, nil)
     if err != nil {
         t.Fatalf("failed to insert record: %s", err)
     }
@@ -102,7 +102,7 @@ func TestDelete(t *testing.T) {
         t.Fatalf("error connecting to CouchDB: %s", err)
     }
     r := Record{321, []string{"zeta", "phi"}}
-    id, rev, err := db.Insert(r)
+    id, rev, err := db.Insert(r, nil)
     if err != nil {
         t.Fatalf("failed to insert record: %s", err)
     }

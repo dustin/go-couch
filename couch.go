@@ -1,11 +1,12 @@
+// -*- tab-width: 4 -*-
 package couch
 
 import (
+	"bytes"
     "strings"
     "fmt"
     "os"
     "json"
-    "bytes"
     "http"
     "net"
     "io/ioutil"
@@ -61,30 +62,13 @@ func from_JSON(s string, p interface{}) (err os.Error) {
     return
 }
 
-// Since the json pkg doesn't handle fields beginning with _, we need to
-// convert "_id" and "_rev" to "Id" and "Rev" to extract that data.
-func temp_hack_go_to_json(json_str string) string {
-    json_str = replace(json_str, `"Id"`, `"_id"`)
-    json_str = replace(json_str, `"Rev"`, `"_rev"`)
-    json_str = replace(json_str, `"Views"`, `"views"`)
-    return json_str
-}
-
-func temp_hack_json_to_go(json_str string) string {
-    json_str = replace(json_str, `"_id"`, `"Id"`)
-    json_str = replace(json_str, `"_rev"`, `"Rev"`)
-    json_str = replace(json_str, `"views"`, `"Views"`)
-    return json_str
-}
-
 type IdAndRev struct {
-    Id  string
-    Rev string
+    Id  string "_id"
+    Rev string "_rev"
 }
 
 // Simply extract id and rev from a given JSON string (typically a document)
 func extract_id_and_rev(json_str string) (string, string, os.Error) {
-    // this assumes the temp replacement hack has already been applied
     id_rev := new(IdAndRev)
     if err := from_JSON(json_str, id_rev); err != nil {
         return "", "", err
@@ -222,16 +206,34 @@ type InsertResponse struct {
     Ok  bool
     Id  string
     Rev string
+	Error string
+	Reason string
 }
 
 // Inserts document to CouchDB, returning id and rev on success.
-func (p Database) Insert(d interface{}) (string, string, os.Error) {
-    json_str, err := to_JSON(d)
+func (p Database) Insert(d interface{}, id *string) (string, string, os.Error) {
+	json_buf, err := json.Marshal(d)
     if err != nil {
         return "", "", err
     }
-    json_str = temp_hack_go_to_json(json_str)
-    r, err := http.Post(p.DBURL(), "application/json", bytes.NewBufferString(json_str))
+    // use the dict representation of a JSON document to
+    // manipulate the _id and _ref fields
+    tmp := map[string]interface{}{}
+    err = json.Unmarshal(json_buf, &tmp)
+    if err != nil {
+        return "", "", err
+    }
+	tmp["_rev"] = nil, false
+    if id != nil {
+        tmp["_id"] = id
+    } else {
+		tmp["_id"] = nil, false
+	}
+    json_buf, err = json.Marshal(tmp)
+    if err != nil {
+        return "", "", err
+    }
+    r, err := http.Post(p.DBURL(), "application/json", bytes.NewBuffer(json_buf))
     if err != nil {
         return "", "", err
     }
@@ -245,7 +247,7 @@ func (p Database) Insert(d interface{}) (string, string, os.Error) {
         return "", "", err
     }
     if !ir.Ok {
-        return "", "", os.NewError("CouchDB returned not-OK")
+        return "", "", os.NewError(ir.Error + ": " + ir.Reason)
     }
     return ir.Id, ir.Rev, nil
 }
@@ -265,7 +267,6 @@ func (p Database) Edit(d interface{}) (string, os.Error) {
     if len(id_rev.Id) <= 0 {
         return "", os.NewError("Id not specified in interface")
     }
-    json_str = temp_hack_go_to_json(json_str)
     // Set up request
     var req http.Request
     req.Method = "PUT"
@@ -320,7 +321,6 @@ func (p Database) Retrieve(id string, d interface{}) (string, os.Error) {
         return "", os.NewError("no id specified")
     }
     json_str := url_to_string(fmt.Sprintf("%s/%s", p.DBURL(), id))
-    json_str = temp_hack_json_to_go(json_str)
     retrieved_id, rev, err := extract_id_and_rev(json_str)
     if err != nil {
         return "", err
