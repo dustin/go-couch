@@ -3,7 +3,6 @@ package couch
 
 import (
 	"bytes"
-    "strings"
     "fmt"
     "os"
     "json"
@@ -12,27 +11,14 @@ import (
     "io/ioutil"
 )
 
+const (
+	Id  = "_id"
+	Rev = "_rev"
+)
+
 //
 // Helper and utility functions (private)
 //
-
-// Replaces all instances of from with to in s (quite inefficient right now)
-func replace(s, from, to string) string {
-    toks := strings.SplitAfter(s, from, -1)
-    newstr := ""
-    for i, tok := range toks {
-        if i < len(toks)-1 {
-            if !strings.HasSuffix(tok, from) {
-                panic("problem in replace")
-            }
-            newtok := tok[0 : len(tok)-len(from)]
-            newstr = newstr + newtok + to
-        } else {
-            newstr = newstr + tok
-        }
-    }
-    return newstr
-}
 
 // Converts given URL to string containing the body of the response.
 func url_to_string(url string) string {
@@ -125,24 +111,15 @@ func (p Database) create_database() os.Error {
     return nil
 }
 
-type stringCloser struct {
-    s   string
-    pos int
+type buffer struct {
+	b *bytes.Buffer
 }
 
-func (sc stringCloser) Close() os.Error { return nil }
-
-func (sc stringCloser) Read(p []byte) (int, os.Error) {
-    i := 0
-    for i = 0; i < len(p) && i < len(sc.s); i++ {
-        p[i] = sc.s[i]
-        sc.pos++
-    }
-    if sc.pos == len(sc.s) {
-        return i, os.EOF
-    }
-    return i, nil
+func (b *buffer) Read(out []byte) (int, os.Error) {
+	return b.b.Read(out)
 }
+
+func (b *buffer) Close() os.Error { return nil }
 
 //
 // Database object + public methods
@@ -210,26 +187,33 @@ type InsertResponse struct {
 	Reason string
 }
 
-// Inserts document to CouchDB, returning id and rev on success.
-func (p Database) Insert(d interface{}, id *string) (string, string, os.Error) {
-	json_buf, err := json.Marshal(d)
+func cleanJson(d interface{}, id, rev *string) (json_buf []byte, err os.Error) {
+	json_buf, err = json.Marshal(d)
     if err != nil {
-        return "", "", err
+        return
     }
-    // use the dict representation of a JSON document to
-    // manipulate the _id and _ref fields
     tmp := map[string]interface{}{}
     err = json.Unmarshal(json_buf, &tmp)
     if err != nil {
-        return "", "", err
+        return
     }
-	tmp["_rev"] = nil, false
-    if id != nil {
-        tmp["_id"] = id
-    } else {
-		tmp["_id"] = nil, false
+	if id == nil {
+		tmp[Id] = nil, false
+	} else {
+		tmp[Id] = id
+	}
+	if rev == nil {
+		tmp[Rev] = nil, false
+	} else {
+		tmp[Rev] = rev
 	}
     json_buf, err = json.Marshal(tmp)
+	return
+}
+
+// Inserts document to CouchDB, returning id and rev on success.
+func (p Database) Insert(d interface{}, id *string) (string, string, os.Error) {
+	json_buf, err := cleanJson(d, id, nil)
     if err != nil {
         return "", "", err
     }
@@ -254,18 +238,13 @@ func (p Database) Insert(d interface{}, id *string) (string, string, os.Error) {
 
 // Edits the given document, which must specify both Id and Rev fields, and
 // returns the new revision.
-func (p Database) Edit(d interface{}) (string, os.Error) {
-    json_str, err := to_JSON(d)
+func (p Database) Edit(d interface{}, id, rev string) (string, os.Error) {
+    if len(id) == 0 {
+        return "", os.NewError("invalid id")
+    }
+	json_buf, err := cleanJson(d, &id, &rev)
     if err != nil {
         return "", err
-    }
-    id_rev := new(IdAndRev)
-    err = from_JSON(json_str, id_rev)
-    if err != nil {
-        return "", err
-    }
-    if len(id_rev.Id) <= 0 {
-        return "", os.NewError("Id not specified in interface")
     }
     // Set up request
     var req http.Request
@@ -277,8 +256,8 @@ func (p Database) Edit(d interface{}) (string, os.Error) {
         "Content-Type": "application/json",
     }
     req.TransferEncoding = []string{"chunked"}
-    req.URL, _ = http.ParseURL(fmt.Sprintf("%s/%s", p.DBURL(), id_rev.Id))
-    req.Body = stringCloser{json_str, 0}
+    req.URL, _ = http.ParseURL(fmt.Sprintf("%s/%s", p.DBURL(), id))
+    req.Body = &buffer{bytes.NewBuffer(json_buf)}
 
     // Make connection
     conn, err := net.Dial("tcp", "", fmt.Sprintf("%s:%s", p.Host, p.Port))

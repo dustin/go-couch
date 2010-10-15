@@ -75,7 +75,7 @@ func TestEdit(t *testing.T) {
         t.Fatalf("error connecting to CouchDB: %s", err)
     }
     r := Record{10101, []string{"iota", "omicron", "nu"}}
-    id, _, err := db.Insert(r, nil)
+    id, rev, err := db.Insert(r, nil)
     if err != nil {
         t.Fatalf("failed to insert record: %s", err)
     }
@@ -84,7 +84,7 @@ func TestEdit(t *testing.T) {
         t.Fatalf("failed to retrieve record: %s", err)
     }
     db_r.Foo = 34
-    if _, err := db.Edit(db_r); err != nil {
+    if _, err := db.Edit(db_r, id, rev); err != nil {
         t.Fatalf("failed to edit record: %s", err)
     }
     r2 := new(Record)
