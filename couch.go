@@ -2,7 +2,7 @@
 package couch
 
 import (
-	"bytes"
+    "bytes"
     "fmt"
     "os"
     "json"
@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	Id  = "_id"
-	Rev = "_rev"
+    Id  = "_id"
+    Rev = "_rev"
 )
 
 //
@@ -66,6 +66,55 @@ type CreateResponse struct {
     Ok bool
 }
 
+// Sends a query to CouchDB and parses the response back.
+func (p Database) interact(method string, url string, in *[]byte, out interface{}) (int, os.Error) {
+    req := http.Request{
+        Method:        method,
+        ProtoMajor:    1,
+        ProtoMinor:    1,
+        Close:         true,
+        ContentLength: -1,
+        Header:        map[string]string{"Content-Type": "application/json"},
+    }
+
+    req.TransferEncoding = []string{"chunked"}
+    req.URL, _ = http.ParseURL(url)
+    if in != nil {
+        req.Body = &buffer{bytes.NewBuffer(*in)}
+    }
+
+    // Make connection
+    conn, err := net.Dial("tcp", "", fmt.Sprintf("%s:%s", p.Host, p.Port))
+    if err != nil {
+        return 0, err
+    }
+    http_conn := http.NewClientConn(conn, nil)
+    defer http_conn.Close()
+    if err := http_conn.Write(&req); err != nil {
+        return 0, err
+    }
+
+    // Read response
+    r, err := http_conn.Read()
+    if err != nil {
+        return 0, err
+    }
+    if r.StatusCode < 200 || r.StatusCode >= 300 {
+        b := []byte{}
+        r.Body.Read(b)
+        fmt.Printf("%v\n", bytes.NewBuffer(b).String())
+        return r.StatusCode, os.NewError("server said: " + r.Status)
+    }
+
+    decoder := json.NewDecoder(r.Body)
+    if err = decoder.Decode(out); err != nil {
+        return 0, err
+    }
+    r.Body.Close()
+
+    return r.StatusCode, nil
+}
+
 func (p Database) create_database() os.Error {
     // Set up request
     var req http.Request
@@ -112,11 +161,11 @@ func (p Database) create_database() os.Error {
 }
 
 type buffer struct {
-	b *bytes.Buffer
+    b *bytes.Buffer
 }
 
 func (b *buffer) Read(out []byte) (int, os.Error) {
-	return b.b.Read(out)
+    return b.b.Read(out)
 }
 
 func (b *buffer) Close() os.Error { return nil }
@@ -179,16 +228,8 @@ func NewDatabase(host, port, name string) (Database, os.Error) {
     return db, nil
 }
 
-type InsertResponse struct {
-    Ok  bool
-    Id  string
-    Rev string
-	Error string
-	Reason string
-}
-
 func cleanJson(d interface{}, id, rev *string) (json_buf []byte, err os.Error) {
-	json_buf, err = json.Marshal(d)
+    json_buf, err = json.Marshal(d)
     if err != nil {
         return
     }
@@ -197,37 +238,36 @@ func cleanJson(d interface{}, id, rev *string) (json_buf []byte, err os.Error) {
     if err != nil {
         return
     }
-	if id == nil {
-		tmp[Id] = nil, false
-	} else {
-		tmp[Id] = id
-	}
-	if rev == nil {
-		tmp[Rev] = nil, false
-	} else {
-		tmp[Rev] = rev
-	}
+    if id == nil {
+        tmp[Id] = nil, false
+    } else {
+        tmp[Id] = id
+    }
+    if rev == nil {
+        tmp[Rev] = nil, false
+    } else {
+        tmp[Rev] = rev
+    }
     json_buf, err = json.Marshal(tmp)
-	return
+    return
+}
+
+type insertResponse struct {
+    Ok     bool
+    Id     string
+    Rev    string
+    Error  string
+    Reason string
 }
 
 // Inserts document to CouchDB, returning id and rev on success.
 func (p Database) Insert(d interface{}, id *string) (string, string, os.Error) {
-	json_buf, err := cleanJson(d, id, nil)
+    json_buf, err := cleanJson(d, id, nil)
     if err != nil {
         return "", "", err
     }
-    r, err := http.Post(p.DBURL(), "application/json", bytes.NewBuffer(json_buf))
-    if err != nil {
-        return "", "", err
-    }
-    b, err := ioutil.ReadAll(r.Body)
-    r.Body.Close()
-    if err != nil {
-        return "", "", err
-    }
-    ir := new(InsertResponse)
-    if err := from_JSON(string(b), ir); err != nil {
+    ir := insertResponse{}
+    if _, err = p.interact("POST", p.DBURL(), &json_buf, &ir); err != nil {
         return "", "", err
     }
     if !ir.Ok {
@@ -242,49 +282,14 @@ func (p Database) Edit(d interface{}, id, rev string) (string, os.Error) {
     if len(id) == 0 {
         return "", os.NewError("invalid id")
     }
-	json_buf, err := cleanJson(d, &id, &rev)
+    json_buf, err := cleanJson(d, &id, &rev)
     if err != nil {
         return "", err
     }
-    // Set up request
-    var req http.Request
-    req.Method = "PUT"
-    req.ProtoMajor = 1
-    req.ProtoMinor = 1
-    req.Close = true
-    req.Header = map[string]string{
-        "Content-Type": "application/json",
-    }
-    req.TransferEncoding = []string{"chunked"}
-    req.URL, _ = http.ParseURL(fmt.Sprintf("%s/%s", p.DBURL(), id))
-    req.Body = &buffer{bytes.NewBuffer(json_buf)}
-
-    // Make connection
-    conn, err := net.Dial("tcp", "", fmt.Sprintf("%s:%s", p.Host, p.Port))
-    if err != nil {
+    url := p.DBURL() + "/" + http.URLEscape(id)
+    ir := insertResponse{}
+    if _, err = p.interact("PUT", url, &json_buf, &ir); err != nil {
         return "", err
-    }
-    http_conn := http.NewClientConn(conn, nil)
-    defer http_conn.Close()
-    if err := http_conn.Write(&req); err != nil {
-        return "", err
-    }
-    // Read response
-    r, err := http_conn.Read()
-    if r == nil {
-        return "", os.NewError("no response")
-    }
-    if err != nil {
-        return "", err
-    }
-    data, _ := ioutil.ReadAll(r.Body)
-    r.Body.Close()
-    ir := new(InsertResponse)
-    if err := from_JSON(string(data), ir); err != nil {
-        return "", err
-    }
-    if !ir.Ok {
-        return "", os.NewError("CouchDB returned not-OK")
     }
     return ir.Rev, nil
 }
@@ -346,7 +351,7 @@ func (p Database) Delete(id, rev string) os.Error {
     }
     data, _ := ioutil.ReadAll(r.Body)
     r.Body.Close()
-    ir := new(InsertResponse)
+    ir := new(insertResponse)
     if err := from_JSON(string(data), ir); err != nil {
         return err
     }

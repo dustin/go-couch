@@ -1,3 +1,4 @@
+// -*- tab-width: 4 -*-
 package couch
 
 import (
@@ -23,8 +24,8 @@ type Record struct {
 }
 
 type DBRecord struct {
-    Id   string  "_id"
-    Rev  string  "_rev"
+    Id   string "_id"
+    Rev  string "_rev"
     Foo  int64
     Bars []string
 }
@@ -85,7 +86,7 @@ func TestEdit(t *testing.T) {
     }
     db_r.Foo = 34
     if _, err := db.Edit(db_r, id, rev); err != nil {
-        t.Fatalf("failed to edit record: %s", err)
+        t.Fatalf("failed to edit record %s:%s: %s", id, rev, err)
     }
     r2 := new(Record)
     if _, err := db.Retrieve(id, r2); err != nil {
