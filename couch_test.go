@@ -36,7 +36,7 @@ func TestInsert(t *testing.T) {
         t.Fatalf("error connecting to CouchDB: %s", err)
     }
     r := Record{12345, []string{"alpha", "beta", "delta"}}
-    id, rev, err := db.Insert(r) 
+    id, rev, err := db.Insert(r)
     if err != nil {
         t.Fatalf("failed to insert record: %s", err)
     }

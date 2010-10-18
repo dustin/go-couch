@@ -11,14 +11,7 @@ import (
     "io/ioutil"
 )
 
-const (
-    Id  = "_id"
-    Rev = "_rev"
-)
-
-var (
-    defaultHeaders = map[string]string{}
-)
+var defaultHeaders = map[string]string{}
 
 //
 // Helper and utility functions (private)
