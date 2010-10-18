@@ -242,7 +242,7 @@ type response struct {
 
 // Inserts document to CouchDB, returning id and rev on success.
 func (p Database) Insert(d interface{}) (string, string, os.Error) {
-    json_buf, err := clean_JSON(d, "", "")
+    json_buf, err := json.Marshal(d) //clean_JSON(d, "", "")
     if err != nil {
         return "", "", err
     }
@@ -258,15 +258,20 @@ func (p Database) Insert(d interface{}) (string, string, os.Error) {
 
 // Edits the given document, which must specify both Id and Rev fields, and
 // returns the new revision.
-func (p Database) Edit(d interface{}, id, rev string) (string, os.Error) {
-    if id == "" {
-        return "", os.NewError("invalid id")
-    }
-    json_buf, err := clean_JSON(d, id, rev)
+func (p Database) Edit(d interface{}) (string, os.Error) {
+    json_buf, err := json.Marshal(d) //clean_JSON(d, "", "")
     if err != nil {
         return "", err
     }
-    url := p.DBURL() + "/" + http.URLEscape(id)
+    id_rev := new(IdAndRev)
+    err = json.Unmarshal(json_buf, id_rev)
+    if err != nil {
+        return "", err
+    }
+    if id_rev.Id == "" {
+        return "", os.NewError("Id not specified in interface")
+    }
+    url := fmt.Sprintf("%s/%s", p.DBURL(), http.URLEscape(id_rev.Id))
     ir := response{}
     if _, err = p.interact("PUT", url, defaultHeaders, &json_buf, &ir); err != nil {
         return "", err
