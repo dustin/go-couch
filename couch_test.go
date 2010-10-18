@@ -36,8 +36,12 @@ func TestInsert(t *testing.T) {
         t.Fatalf("error connecting to CouchDB: %s", err)
     }
     r := Record{12345, []string{"alpha", "beta", "delta"}}
-    if _, _, err := db.Insert(r); err != nil {
+    id, rev, err := db.Insert(r) 
+    if err != nil {
         t.Fatalf("failed to insert record: %s", err)
+    }
+    if err := db.Delete(id, rev); err != nil {
+        t.Fatalf("failed to delete record: %s", err)
     }
 }
 
@@ -68,6 +72,9 @@ func TestRetrieve(t *testing.T) {
     if !reflect.DeepEqual(db_r.Bars, r.Bars) {
         t.Fatalf("bars: expected %v, got %v", r.Bars, db_r.Bars)
     }
+    if err := db.Delete(db_r.Id, db_r.Rev); err != nil {
+        t.Fatalf("failed to delete record: %s", err)
+    }
 }
 
 func TestEdit(t *testing.T) {
@@ -85,7 +92,8 @@ func TestEdit(t *testing.T) {
         t.Fatalf("failed to retrieve record: %s", err)
     }
     db_r.Foo = 34
-    if _, err := db.Edit(db_r); err != nil {
+    new_rev, err := db.Edit(db_r)
+    if err != nil {
         t.Fatalf("failed to edit record %s:%s: %s", id, rev, err)
     }
     r2 := new(Record)
@@ -94,6 +102,9 @@ func TestEdit(t *testing.T) {
     }
     if r2.Foo != 34 {
         t.Fatalf("failed to save the change in Edit: Foo=%d, expected %d", r2.Foo, 34)
+    }
+    if err := db.Delete(db_r.Id, new_rev); err != nil {
+        t.Fatalf("failed to delete record: %s", err)
     }
 }
 
@@ -112,12 +123,12 @@ func TestDelete(t *testing.T) {
     }
 }
 
-func Eventually_I_Will_TestSpecificInsert(t *testing.T) {
+func TestSpecificInsert(t *testing.T) {
     db, err := NewDatabase(TEST_HOST, TEST_PORT, TEST_NAME)
     if err != nil {
         t.Fatalf("error connecting to CouchDB: %s", err)
     }
-    r := DBRecord{"my_test_id", "1", 42, []string{"one", "two"}}
+    r := DBRecord{"my_test_id", "", 42, []string{"one", "two"}}
     t.Logf("%v", r)
     id, rev, err := db.Insert(r)
     if err != nil {
@@ -132,13 +143,25 @@ func Eventually_I_Will_TestSpecificInsert(t *testing.T) {
         t.Fatalf("failed to retrieve record: %s", err)
     }
     if id != db_r.Id {
-        t.Fatalf("id: expected %s, got %s", id, db_r.Id)
+        t.Errorf("id: expected %s, got %s", id, db_r.Id)
     }
     if rev != db_r.Rev {
-        t.Fatalf("rev: expected %s, got %s", rev, db_r.Rev)
+        t.Errorf("rev: expected %s, got %s", rev, db_r.Rev)
+    }
+    db_r.Foo = 24
+    rev, err = db.Edit(db_r)
+    if err != nil {
+        t.Errorf("failed to edit record: %s", err)
+    }
+    rev, err = db.Retrieve(id, db_r)
+    if err != nil {
+        t.Errorf("failed to re-retrieve record: %s", err)
+    }
+    if db_r.Foo != 24 {
+        t.Errorf("after re-retreival, Foo: expected %d, got %d", 24, db_r.Foo)
     }
     err = db.Delete(db_r.Id, db_r.Rev)
     if err != nil {
-        t.Fatalf("Delete failed: %s", err)
+        t.Fatalf("failed to delete record: %s", err)
     }
 }
