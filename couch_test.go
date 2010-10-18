@@ -36,7 +36,7 @@ func TestInsert(t *testing.T) {
         t.Fatalf("error connecting to CouchDB: %s", err)
     }
     r := Record{12345, []string{"alpha", "beta", "delta"}}
-    if _, _, err := db.Insert(r, nil); err != nil {
+    if _, _, err := db.Insert(r); err != nil {
         t.Fatalf("failed to insert record: %s", err)
     }
 }
@@ -47,7 +47,7 @@ func TestRetrieve(t *testing.T) {
         t.Fatalf("error connecting to CouchDB: %s", err)
     }
     r := Record{999, []string{"kappa", "gamma"}}
-    id, _, err := db.Insert(r, nil)
+    id, _, err := db.Insert(r)
     if err != nil {
         t.Fatalf("failed to insert record: %s", err)
     }
@@ -76,7 +76,7 @@ func TestEdit(t *testing.T) {
         t.Fatalf("error connecting to CouchDB: %s", err)
     }
     r := Record{10101, []string{"iota", "omicron", "nu"}}
-    id, rev, err := db.Insert(r, nil)
+    id, rev, err := db.Insert(r)
     if err != nil {
         t.Fatalf("failed to insert record: %s", err)
     }
@@ -103,11 +103,42 @@ func TestDelete(t *testing.T) {
         t.Fatalf("error connecting to CouchDB: %s", err)
     }
     r := Record{321, []string{"zeta", "phi"}}
-    id, rev, err := db.Insert(r, nil)
+    id, rev, err := db.Insert(r)
     if err != nil {
         t.Fatalf("failed to insert record: %s", err)
     }
     if err := db.Delete(id, rev); err != nil {
         t.Fatalf("failed to delete record: %s", err)
+    }
+}
+
+func Eventually_I_Will_TestSpecificInsert(t *testing.T) {
+    db, err := NewDatabase(TEST_HOST, TEST_PORT, TEST_NAME)
+    if err != nil {
+        t.Fatalf("error connecting to CouchDB: %s", err)
+    }
+    r := DBRecord{"my_test_id", "1", 42, []string{"one", "two"}}
+    t.Logf("%v", r)
+    id, rev, err := db.Insert(r)
+    if err != nil {
+        t.Fatalf("failed to insert record: %s", err)
+    }
+    if id != r.Id {
+        t.Fatalf("specified id: expected %s, got %s", r.Id, id)
+    }
+    db_r := new(DBRecord)
+    rev, err = db.Retrieve(id, db_r)
+    if err != nil {
+        t.Fatalf("failed to retrieve record: %s", err)
+    }
+    if id != db_r.Id {
+        t.Fatalf("id: expected %s, got %s", id, db_r.Id)
+    }
+    if rev != db_r.Rev {
+        t.Fatalf("rev: expected %s, got %s", rev, db_r.Rev)
+    }
+    err = db.Delete(db_r.Id, db_r.Rev)
+    if err != nil {
+        t.Fatalf("Delete failed: %s", err)
     }
 }
