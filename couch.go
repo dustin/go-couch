@@ -16,6 +16,10 @@ const (
     Rev = "_rev"
 )
 
+var (
+    defaultHeaders = map[string]string{}
+)
+
 //
 // Helper and utility functions (private)
 //
@@ -62,19 +66,36 @@ func extract_id_and_rev(json_str string) (string, string, os.Error) {
     return id_rev.Id, id_rev.Rev, nil
 }
 
-type CreateResponse struct {
-    Ok bool
-}
+/* 
+ Sends a query to CouchDB and parses the response back.
 
-// Sends a query to CouchDB and parses the response back.
-func (p Database) interact(method string, url string, in *[]byte, out interface{}) (int, os.Error) {
+ method: the name of the HTTP method (POST, PUT,...)
+ url: the URL to interact with
+ headers: additional headers to pass to the request
+ in: body of the request
+ out: a structure to fill in with the returned JSON document
+*/
+func (p Database) interact(method string, url string, headers map[string]string, in *[]byte, out interface{}) (int, os.Error) {
+
+    fullHeaders := map[string]string{}
+    for k, v := range headers {
+        fullHeaders[k] = v
+    }
+
+    var bodyLength int
+    if in == nil {
+        bodyLength = 0
+    } else {
+        bodyLength = len(*in)
+        fullHeaders["Content-Type"] = "application/json"
+    }
     req := http.Request{
         Method:        method,
         ProtoMajor:    1,
         ProtoMinor:    1,
         Close:         true,
-        ContentLength: -1,
-        Header:        map[string]string{"Content-Type": "application/json"},
+        ContentLength: int64(bodyLength),
+        Header:        fullHeaders,
     }
 
     req.TransferEncoding = []string{"chunked"}
@@ -116,47 +137,13 @@ func (p Database) interact(method string, url string, in *[]byte, out interface{
 }
 
 func (p Database) create_database() os.Error {
-    // Set up request
-    var req http.Request
-    req.Method = "PUT"
-    req.ProtoMajor = 1
-    req.ProtoMinor = 1
-    req.Close = true
-    req.Header = map[string]string{
-        "Content-Type": "application/json",
-    }
-    req.TransferEncoding = []string{"chunked"}
-    req.URL, _ = http.ParseURL(p.DBURL())
-
-    // Make connection
-    conn, err := net.Dial("tcp", "", fmt.Sprintf("%s:%s", p.Host, p.Port))
-    if err != nil {
+    ir := response{}
+    if _, err := p.interact("PUT", p.DBURL(), defaultHeaders, nil, &ir); err != nil {
         return err
     }
-    http_conn := http.NewClientConn(conn, nil)
-    defer http_conn.Close()
-    if err := http_conn.Write(&req); err != nil {
-        return err
-    }
-
-    // Read response
-    r, err := http_conn.Read()
-    if r == nil {
-        return os.NewError("no response")
-    }
-    if err != nil {
-        return err
-    }
-    data, _ := ioutil.ReadAll(r.Body)
-    r.Body.Close()
-    cr := new(CreateResponse)
-    if err := from_JSON(string(data), cr); err != nil {
-        return err
-    }
-    if !cr.Ok {
+    if !ir.Ok {
         return os.NewError("CouchDB returned not-OK")
     }
-
     return nil
 }
 
@@ -252,7 +239,7 @@ func cleanJson(d interface{}, id, rev *string) (json_buf []byte, err os.Error) {
     return
 }
 
-type insertResponse struct {
+type response struct {
     Ok     bool
     Id     string
     Rev    string
@@ -266,8 +253,8 @@ func (p Database) Insert(d interface{}, id *string) (string, string, os.Error) {
     if err != nil {
         return "", "", err
     }
-    ir := insertResponse{}
-    if _, err = p.interact("POST", p.DBURL(), &json_buf, &ir); err != nil {
+    ir := response{}
+    if _, err = p.interact("POST", p.DBURL(), defaultHeaders, &json_buf, &ir); err != nil {
         return "", "", err
     }
     if !ir.Ok {
@@ -287,8 +274,8 @@ func (p Database) Edit(d interface{}, id, rev string) (string, os.Error) {
         return "", err
     }
     url := p.DBURL() + "/" + http.URLEscape(id)
-    ir := insertResponse{}
-    if _, err = p.interact("PUT", url, &json_buf, &ir); err != nil {
+    ir := response{}
+    if _, err = p.interact("PUT", url, defaultHeaders, &json_buf, &ir); err != nil {
         return "", err
     }
     return ir.Rev, nil
@@ -317,48 +304,18 @@ func (p Database) Retrieve(id string, d interface{}) (string, os.Error) {
 
 // Deletes document given by id and rev.
 func (p Database) Delete(id, rev string) os.Error {
-    // Set up request
-    var req http.Request
-    req.Method = "DELETE"
-    req.ProtoMajor = 1
-    req.ProtoMinor = 1
-    req.Close = true
-    req.Header = map[string]string{
-        "Content-Type": "application/json",
-        "If-Match":     rev,
+    headers := map[string]string{
+        "If-Match": rev,
     }
-    req.TransferEncoding = []string{"chunked"}
-    req.URL, _ = http.ParseURL(fmt.Sprintf("%s/%s", p.DBURL(), id))
+    url := fmt.Sprintf("%s/%s", p.DBURL(), id)
 
-    // Make connection
-    conn, err := net.Dial("tcp", "", fmt.Sprintf("%s:%s", p.Host, p.Port))
-    if err != nil {
-        return err
-    }
-    http_conn := http.NewClientConn(conn, nil)
-    defer http_conn.Close()
-    if err := http_conn.Write(&req); err != nil {
-        return err
-    }
-
-    // Read response
-    r, err := http_conn.Read()
-    if r == nil {
-        return os.NewError("no response")
-    }
-    if err != nil {
-        return err
-    }
-    data, _ := ioutil.ReadAll(r.Body)
-    r.Body.Close()
-    ir := new(insertResponse)
-    if err := from_JSON(string(data), ir); err != nil {
+    ir := response{}
+    if _, err := p.interact("DELETE", url, headers, nil, &ir); err != nil {
         return err
     }
     if !ir.Ok {
         return os.NewError("CouchDB returned not-OK")
     }
-
     return nil
 }
 
