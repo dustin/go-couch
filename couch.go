@@ -215,7 +215,7 @@ func NewDatabase(host, port, name string) (Database, os.Error) {
     return db, nil
 }
 
-func cleanJson(d interface{}, id, rev *string) (json_buf []byte, err os.Error) {
+func clean_JSON(d interface{}, id, rev *string) (json_buf []byte, err os.Error) {
     json_buf, err = json.Marshal(d)
     if err != nil {
         return
@@ -249,7 +249,7 @@ type response struct {
 
 // Inserts document to CouchDB, returning id and rev on success.
 func (p Database) Insert(d interface{}, id *string) (string, string, os.Error) {
-    json_buf, err := cleanJson(d, id, nil)
+    json_buf, err := clean_JSON(d, id, nil)
     if err != nil {
         return "", "", err
     }
@@ -269,7 +269,7 @@ func (p Database) Edit(d interface{}, id, rev string) (string, os.Error) {
     if len(id) == 0 {
         return "", os.NewError("invalid id")
     }
-    json_buf, err := cleanJson(d, &id, &rev)
+    json_buf, err := clean_JSON(d, &id, &rev)
     if err != nil {
         return "", err
     }
