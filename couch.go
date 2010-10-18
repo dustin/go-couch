@@ -212,26 +212,6 @@ func NewDatabase(host, port, name string) (Database, os.Error) {
     return db, nil
 }
 
-func clean_JSON(d interface{}, id, rev string) (json_buf []byte, err os.Error) {
-    json_buf, err = json.Marshal(d)
-    if err != nil {
-        return
-    }
-    tmp := map[string]interface{}{}
-    err = json.Unmarshal(json_buf, &tmp)
-    if err != nil {
-        return
-    }
-    if id != "" {
-        tmp[Id] = id
-    }
-    if rev != "" {
-        tmp[Rev] = rev
-    }
-    json_buf, err = json.Marshal(tmp)
-    return
-}
-
 type response struct {
     Ok     bool
     Id     string
@@ -242,7 +222,7 @@ type response struct {
 
 // Inserts document to CouchDB, returning id and rev on success.
 func (p Database) Insert(d interface{}) (string, string, os.Error) {
-    json_buf, err := json.Marshal(d) //clean_JSON(d, "", "")
+    json_buf, err := json.Marshal(d)
     if err != nil {
         return "", "", err
     }
@@ -259,7 +239,7 @@ func (p Database) Insert(d interface{}) (string, string, os.Error) {
 // Edits the given document, which must specify both Id and Rev fields, and
 // returns the new revision.
 func (p Database) Edit(d interface{}) (string, os.Error) {
-    json_buf, err := json.Marshal(d) //clean_JSON(d, "", "")
+    json_buf, err := json.Marshal(d)
     if err != nil {
         return "", err
     }
