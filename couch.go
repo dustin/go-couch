@@ -142,7 +142,7 @@ func (p Database) create_database() os.Error {
         return err
     }
     if !ir.Ok {
-        return os.NewError("CouchDB returned not-OK")
+        return os.NewError(fmt.Sprintf("%s: %s", ir.Error, ir.Reason))
     }
     return nil
 }
@@ -258,7 +258,7 @@ func (p Database) Insert(d interface{}, id *string) (string, string, os.Error) {
         return "", "", err
     }
     if !ir.Ok {
-        return "", "", os.NewError(ir.Error + ": " + ir.Reason)
+        return "", "", os.NewError(fmt.Sprintf("%s: %s", ir.Error, ir.Reason))
     }
     return ir.Id, ir.Rev, nil
 }
@@ -266,7 +266,7 @@ func (p Database) Insert(d interface{}, id *string) (string, string, os.Error) {
 // Edits the given document, which must specify both Id and Rev fields, and
 // returns the new revision.
 func (p Database) Edit(d interface{}, id, rev string) (string, os.Error) {
-    if len(id) == 0 {
+    if id == "" {
         return "", os.NewError("invalid id")
     }
     json_buf, err := clean_JSON(d, &id, &rev)
@@ -288,7 +288,7 @@ type RetrieveError struct {
 
 // Unmarshals the document matching id to the given interface, returning rev.
 func (p Database) Retrieve(id string, d interface{}) (string, os.Error) {
-    if len(id) <= 0 {
+    if id == "" {
         return "", os.NewError("no id specified")
     }
     json_str := url_to_string(fmt.Sprintf("%s/%s", p.DBURL(), id))
@@ -314,7 +314,7 @@ func (p Database) Delete(id, rev string) os.Error {
         return err
     }
     if !ir.Ok {
-        return os.NewError("CouchDB returned not-OK")
+        return os.NewError(fmt.Sprintf("%s: %s", ir.Error, ir.Reason))
     }
     return nil
 }
@@ -334,7 +334,7 @@ type KeyedViewResponse struct {
 // view should be eg. "_design/my_foo/_view/my_bar"
 // options should be eg. { "limit": 10, "key": "baz" }
 func (p Database) Query(view string, options map[string]interface{}) ([]string, os.Error) {
-    if len(view) <= 0 {
+    if view == "" {
         return make([]string, 0), os.NewError("empty view")
     }
 
