@@ -119,6 +119,33 @@ func TestEdit(t *testing.T) {
 	}
 }
 
+func TestManualEdit(t *testing.T) {
+	db, err := NewDatabase(TEST_HOST, TEST_PORT, TEST_NAME)
+	if err != nil {
+		t.Fatalf("error connecting to CouchDB: %s", err)
+	}
+	r := Record{10101, []string{"iota", "omicron", "nu"}}
+	id, rev, err := db.Insert(r)
+	if err != nil {
+		t.Fatalf("failed to insert record: %s", err)
+	}
+	db_r := DBRecord{Id:id, Rev:rev, Foo:34, Bars:[]string{"iota"}}
+	new_rev, err := db.Edit(db_r)
+	if err != nil {
+		t.Fatalf("failed to edit record %s:%s: %s", id, rev, err)
+	}
+	r2 := new(Record)
+	if _, err := db.Retrieve(id, r2); err != nil {
+		t.Fatalf("failed to re-retrieve record: %s", err)
+	}
+	if r2.Foo != 34 {
+		t.Fatalf("failed to save the change in Edit: Foo=%d, expected %d", r2.Foo, 34)
+	}
+	if err := db.Delete(db_r.Id, new_rev); err != nil {
+		t.Fatalf("failed to delete record: %s", err)
+	}
+}
+
 func TestDelete(t *testing.T) {
 	db, err := NewDatabase(TEST_HOST, TEST_PORT, TEST_NAME)
 	if err != nil {
