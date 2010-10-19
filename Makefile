@@ -5,7 +5,6 @@
 include $(GOROOT)/src/Make.inc
 
 TARG=couch-go.googlecode.com/hg
-GOFMT=gofmt -spaces=true -tabindent=false -tabwidth=4
 
 GOFILES=\
 	couch.go\
@@ -13,6 +12,6 @@ GOFILES=\
 include $(GOROOT)/src/Make.pkg
 
 format:
-	${GOFMT} -w couch.go
-	$(GOFMT) -w couch_test.go
+	gofmt -w couch.go
+	gofmt -w couch_test.go
 
