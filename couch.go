@@ -343,8 +343,8 @@ func (p Database) Delete(id, rev string) os.Error {
 }
 
 type Row struct {
-	Id  string
-	Key string
+	Id  *string
+	Key *string
 }
 
 type keyed_view_response struct {
@@ -356,9 +356,9 @@ type keyed_view_response struct {
 // Return array of document ids as returned by the given view/options combo.
 // view should be eg. "_design/my_foo/_view/my_bar"
 // options should be eg. { "limit": 10, "key": "baz" }
-func (p Database) Query(view string, options map[string]interface{}) ([]string, os.Error) {
+func (p Database) Query(view string, options map[string]interface{}) ([]*string, os.Error) {
 	if view == "" {
-		return make([]string, 0), os.NewError("empty view")
+		return make([]*string, 0), os.NewError("empty view")
 	}
 	parameters := ""
 	for k, v := range options {
@@ -378,9 +378,9 @@ func (p Database) Query(view string, options map[string]interface{}) ([]string, 
 	json_buf := url_to_buf(full_url)
 	kvr := new(keyed_view_response)
 	if err := json.Unmarshal(json_buf, kvr); err != nil {
-		return make([]string, 0), err
+		return make([]*string, 0), err
 	}
-	ids := make([]string, len(kvr.Rows))
+	ids := make([]*string, len(kvr.Rows))
 	for i, row := range kvr.Rows {
 		ids[i] = row.Id
 	}
