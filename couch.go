@@ -24,7 +24,7 @@ func (b *buffer) Read(out []byte) (int, os.Error) {
 func (b *buffer) Close() os.Error { return nil }
 
 // Converts given URL to string containing the body of the response.
-func url_to_string(url string) []byte {
+func url_to_buf(url string) []byte {
 	if r, _, err := http.Get(url); err == nil {
 		b, err := ioutil.ReadAll(r.Body)
 		r.Body.Close()
@@ -38,15 +38,6 @@ func url_to_string(url string) []byte {
 type IdAndRev struct {
 	Id  string "_id"
 	Rev string "_rev"
-}
-
-// Simply extract id and rev from a given JSON string (typically a document)
-func extract_id_and_rev(json_str []byte) (string, string, os.Error) {
-	id_rev := new(IdAndRev)
-	if err := json.Unmarshal(json_str, id_rev); err != nil {
-		return "", "", err
-	}
-	return id_rev.Id, id_rev.Rev, nil
 }
 
 // Sends a query to CouchDB and parses the response back.
@@ -121,7 +112,7 @@ func (p Database) DBURL() string {
 // Test whether CouchDB is running (ignores Database.Name)
 func (p Database) Running() bool {
 	url := fmt.Sprintf("%s/%s", p.BaseURL(), "_all_dbs")
-	s := url_to_string(url)
+	s := url_to_buf(url)
 	if len(s) > 0 {
 		return true
 	}
@@ -136,7 +127,7 @@ type database_info struct {
 // Test whether specified database exists in specified CouchDB instance
 func (p Database) Exists() bool {
 	di := new(database_info)
-	if err := json.Unmarshal(url_to_string(p.DBURL()), di); err != nil {
+	if err := json.Unmarshal(url_to_buf(p.DBURL()), di); err != nil {
 		return false
 	}
 	if di.Db_name != p.Name {
@@ -324,15 +315,15 @@ func (p Database) Retrieve(id string, d interface{}) (string, os.Error) {
 	if id == "" {
 		return "", os.NewError("no id specified")
 	}
-	json_str := url_to_string(fmt.Sprintf("%s/%s", p.DBURL(), id))
-	retrieved_id, rev, err := extract_id_and_rev(json_str)
-	if err != nil {
+	json_buf := url_to_buf(fmt.Sprintf("%s/%s", p.DBURL(), id))
+	id_rev := new(IdAndRev)
+	if err := json.Unmarshal(json_buf, &id_rev); err != nil {
 		return "", err
 	}
-	if retrieved_id != id {
+	if id_rev.Id != id {
 		return "", os.NewError("invalid id specified")
 	}
-	return rev, json.Unmarshal(json_str, d)
+	return id_rev.Rev, json.Unmarshal(json_buf, d)
 }
 
 // Deletes document given by id and rev.
@@ -384,9 +375,9 @@ func (p Database) Query(view string, options map[string]interface{}) ([]string, 
 		}
 	}
 	full_url := fmt.Sprintf("%s/%s?%s", p.DBURL(), view, parameters)
-	json_str := url_to_string(full_url)
+	json_buf := url_to_buf(full_url)
 	kvr := new(keyed_view_response)
-	if err := json.Unmarshal(json_str, kvr); err != nil {
+	if err := json.Unmarshal(json_buf, kvr); err != nil {
 		return make([]string, 0), err
 	}
 	ids := make([]string, len(kvr.Rows))
