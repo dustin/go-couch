@@ -308,3 +308,121 @@ func TestEditWith(t *testing.T) {
 		t.Fatalf("failed to delete record: %s", err)
 	}
 }
+
+func TestQueryId(t *testing.T) {
+	db, err := NewDatabase(TEST_HOST, TEST_PORT, TEST_NAME)
+	if err != nil {
+		t.Fatalf("error connecting to CouchDB: %s", err)
+	}
+	r1 := DBRecord{"my_test_id", "", 42, []string{"one", "two"}}
+	id1, rev1, err := db.Insert(r1)
+	if err != nil {
+		t.Fatalf("failed to insert record: %s", err)
+	}
+	r2 := DBRecord{"my_test_id2", "", 43, []string{"three", "four"}}
+	id2, rev2, err := db.Insert(r2)
+	if err != nil {
+		t.Fatalf("failed to insert record: %s", err)
+	}
+
+	design := map[string]interface{}{}
+	design["_id"] = "_design/testview"
+	views := map[string]interface{}{}
+	design["views"] = views
+	v := map[string]string{}
+	views["v"] = v
+	v["map"] = "function(doc) { emit(doc._id); }"
+
+	designId, designRev, err := db.Insert(design)
+
+	ids, err := db.QueryIds("_design/testview/_view/v", map[string]interface{}{})
+	if err != nil {
+	   t.Fatalf("failed to query ids: %s", err)
+	}
+	if len(ids) != 2 {
+	   t.Fatalf("expected 2 ids, but got %d", len(ids))
+	}
+	if ids[0] != "my_test_id" {
+	   t.Fatalf("_id: expected %s, got %s", "my_test_id", ids[0])
+    }	
+	if ids[1] != "my_test_id2" {
+	   t.Fatalf("_id: expected %s, got %s", "my_test_id2", ids[1])
+    }	
+	err = db.Delete(id1, rev1)
+	if err != nil {
+		t.Fatalf("failed to delete record 1: %s", err)
+	}
+	err = db.Delete(id2, rev2)
+	if err != nil {
+		t.Fatalf("failed to delete record 2: %s", err)
+	}
+	err = db.Delete(designId, designRev)
+	if err != nil {
+		t.Fatalf("failed to delete design record: %s", err)
+	}
+}
+
+type MyRow struct {
+	 Key   uint64
+	 Value uint64
+}
+
+type MyRows struct {
+	 Rows	[]MyRow
+}
+
+func TestQuery(t *testing.T) {
+	db, err := NewDatabase(TEST_HOST, TEST_PORT, TEST_NAME)
+	if err != nil {
+		t.Fatalf("error connecting to CouchDB: %s", err)
+	}
+	r1 := DBRecord{"my_test_id", "", 42, []string{"one", "two"}}
+	id1, rev1, err := db.Insert(r1)
+	if err != nil {
+		t.Fatalf("failed to insert record: %s", err)
+	}
+	r2 := DBRecord{"my_test_id2", "", 43, []string{"three", "four"}}
+	id2, rev2, err := db.Insert(r2)
+	if err != nil {
+		t.Fatalf("failed to insert record: %s", err)
+	}
+
+	design := map[string]interface{}{}
+	design["_id"] = "_design/testview"
+	views := map[string]interface{}{}
+	design["views"] = views
+	v := map[string]string{}
+	views["v"] = v
+	v["map"] = "function(doc) { emit(1, doc.Foo); }"
+	v["reduce"] = "function(key, values, rereduce) { return sum(values); }"
+
+	designId, designRev, err := db.Insert(design)
+
+	rows := MyRows{}
+	err = db.Query("_design/testview/_view/v", map[string]interface{}{"group": true}, &rows)
+	if err != nil {
+	   t.Fatalf("failed to query ids: %s", err)
+	}
+	if len(rows.Rows) != 1 {
+	   t.Fatalf("expected 1 row, but got %d", len(rows.Rows))
+	}
+	if rows.Rows[0].Key != 1 {
+	   t.Fatalf("key: expected %d, got %s", 1, rows.Rows[0].Key)
+    }	
+	if rows.Rows[0].Value != 85 {
+	   t.Fatalf("value: expected %d, got %d", 85, rows.Rows[0].Value)
+    }	
+
+	err = db.Delete(id1, rev1)
+	if err != nil {
+		t.Fatalf("failed to delete record 1: %s", err)
+	}
+	err = db.Delete(id2, rev2)
+	if err != nil {
+		t.Fatalf("failed to delete record 2: %s", err)
+	}
+	err = db.Delete(designId, designRev)
+	if err != nil {
+		t.Fatalf("failed to delete design record: %s", err)
+	}
+}

@@ -356,9 +356,27 @@ type keyed_view_response struct {
 // Return array of document ids as returned by the given view/options combo.
 // view should be eg. "_design/my_foo/_view/my_bar"
 // options should be eg. { "limit": 10, "key": "baz" }
-func (p Database) Query(view string, options map[string]interface{}) ([]*string, os.Error) {
+func (p Database) QueryIds(view string, options map[string]interface{}) ([]string, os.Error) {
+	kvr := new(keyed_view_response)
+
+	if err := p.Query(view, options, kvr); err != nil {
+	   return make([]string, 0), err
+	}
+	
+	ids := make([]string, len(kvr.Rows))
+	i := 0
+	for _, row := range kvr.Rows {
+		if row.Id != nil {
+ 		   ids[i] = *row.Id
+		   i = i+1
+		}
+	}
+	return ids[:i], nil
+}
+
+func (p Database) Query(view string, options map[string]interface{}, results interface{}) os.Error {
 	if view == "" {
-		return make([]*string, 0), os.NewError("empty view")
+		return os.NewError("empty view")
 	}
 	parameters := ""
 	for k, v := range options {
@@ -376,13 +394,9 @@ func (p Database) Query(view string, options map[string]interface{}) ([]*string,
 	}
 	full_url := fmt.Sprintf("%s/%s?%s", p.DBURL(), view, parameters)
 	json_buf := url_to_buf(full_url)
-	kvr := new(keyed_view_response)
-	if err := json.Unmarshal(json_buf, kvr); err != nil {
-		return make([]*string, 0), err
+
+	if err := json.Unmarshal(json_buf, results); err != nil {
+		return err
 	}
-	ids := make([]*string, len(kvr.Rows))
-	for i, row := range kvr.Rows {
-		ids[i] = row.Id
-	}
-	return ids, nil
+	return nil
 }
