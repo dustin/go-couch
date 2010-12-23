@@ -129,7 +129,7 @@ func TestManualEdit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to insert record: %s", err)
 	}
-	db_r := DBRecord{Id:id, Rev:rev, Foo:34, Bars:[]string{"iota"}}
+	db_r := DBRecord{Id: id, Rev: rev, Foo: 34, Bars: []string{"iota"}}
 	new_rev, err := db.Edit(db_r)
 	if err != nil {
 		t.Fatalf("failed to edit record %s:%s: %s", id, rev, err)
@@ -314,12 +314,12 @@ func TestQueryId(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error connecting to CouchDB: %s", err)
 	}
-	r1 := DBRecord{"my_test_id", "", 42, []string{"one", "two"}}
+	r1 := DBRecord{"test_queryid_001", "", 42, []string{"one", "two"}}
 	id1, rev1, err := db.Insert(r1)
 	if err != nil {
 		t.Fatalf("failed to insert record: %s", err)
 	}
-	r2 := DBRecord{"my_test_id2", "", 43, []string{"three", "four"}}
+	r2 := DBRecord{"test_queryid_002", "", 43, []string{"three", "four"}}
 	id2, rev2, err := db.Insert(r2)
 	if err != nil {
 		t.Fatalf("failed to insert record: %s", err)
@@ -331,23 +331,28 @@ func TestQueryId(t *testing.T) {
 	design["views"] = views
 	v := map[string]string{}
 	views["v"] = v
-	v["map"] = "function(doc) { emit(doc._id); }"
+	v["map"] = "function(doc) { emit(null, doc._id); }"
+	t.Logf("view 'map': %s", v["map"])
 
 	designId, designRev, err := db.Insert(design)
-
+	if err != nil {
+		t.Fatalf("failed to insert design: %s", err)
+	} else {
+		t.Logf("designId %s, designRev %s", designId, designRev)
+	}
 	ids, err := db.QueryIds("_design/testview/_view/v", map[string]interface{}{})
 	if err != nil {
-	   t.Fatalf("failed to query ids: %s", err)
+		t.Fatalf("failed to query ids: %s", err)
 	}
 	if len(ids) != 2 {
-	   t.Fatalf("expected 2 ids, but got %d", len(ids))
+		t.Fatalf("expected 2 ids, but got %d", len(ids))
 	}
-	if ids[0] != "my_test_id" {
-	   t.Fatalf("_id: expected %s, got %s", "my_test_id", ids[0])
-    }	
-	if ids[1] != "my_test_id2" {
-	   t.Fatalf("_id: expected %s, got %s", "my_test_id2", ids[1])
-    }	
+	if ids[0] != "test_queryid_001" {
+		t.Fatalf("_id: expected %s, got %s", "test_queryid_001", ids[0])
+	}
+	if ids[1] != "test_queryid_002" {
+		t.Fatalf("_id: expected %s, got %s", "test_queryid_002", ids[1])
+	}
 	err = db.Delete(id1, rev1)
 	if err != nil {
 		t.Fatalf("failed to delete record 1: %s", err)
@@ -363,12 +368,12 @@ func TestQueryId(t *testing.T) {
 }
 
 type MyRow struct {
-	 Key   uint64
-	 Value uint64
+	Key   uint64
+	Value uint64
 }
 
 type MyRows struct {
-	 Rows	[]MyRow
+	Rows []MyRow
 }
 
 func TestQuery(t *testing.T) {
@@ -376,12 +381,12 @@ func TestQuery(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error connecting to CouchDB: %s", err)
 	}
-	r1 := DBRecord{"my_test_id", "", 42, []string{"one", "two"}}
+	r1 := DBRecord{"query_001", "", 42, []string{"one", "two"}}
 	id1, rev1, err := db.Insert(r1)
 	if err != nil {
 		t.Fatalf("failed to insert record: %s", err)
 	}
-	r2 := DBRecord{"my_test_id2", "", 43, []string{"three", "four"}}
+	r2 := DBRecord{"query_002", "", 43, []string{"three", "four"}}
 	id2, rev2, err := db.Insert(r2)
 	if err != nil {
 		t.Fatalf("failed to insert record: %s", err)
@@ -401,17 +406,17 @@ func TestQuery(t *testing.T) {
 	rows := MyRows{}
 	err = db.Query("_design/testview/_view/v", map[string]interface{}{"group": true}, &rows)
 	if err != nil {
-	   t.Fatalf("failed to query ids: %s", err)
+		t.Fatalf("failed to query ids: %s", err)
 	}
 	if len(rows.Rows) != 1 {
-	   t.Fatalf("expected 1 row, but got %d", len(rows.Rows))
+		t.Fatalf("expected 1 row, but got %d", len(rows.Rows))
 	}
 	if rows.Rows[0].Key != 1 {
-	   t.Fatalf("key: expected %d, got %s", 1, rows.Rows[0].Key)
-    }	
+		t.Fatalf("key: expected %d, got %s", 1, rows.Rows[0].Key)
+	}
 	if rows.Rows[0].Value != 85 {
-	   t.Fatalf("value: expected %d, got %d", 85, rows.Rows[0].Value)
-    }	
+		t.Fatalf("value: expected %d, got %d", 85, rows.Rows[0].Value)
+	}
 
 	err = db.Delete(id1, rev1)
 	if err != nil {
