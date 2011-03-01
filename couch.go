@@ -11,7 +11,7 @@ import (
 	"io/ioutil"
 )
 
-var def_hdrs = map[string]string{}
+var def_hdrs = map[string][]string{}
 
 type buffer struct {
 	b *bytes.Buffer
@@ -46,15 +46,15 @@ type IdAndRev struct {
 // headers: additional headers to pass to the request
 // in: body of the request
 // out: a structure to fill in with the returned JSON document
-func (p Database) interact(method, url string, headers map[string]string, in []byte, out interface{}) (int, os.Error) {
-	fullHeaders := map[string]string{}
+func (p Database) interact(method, url string, headers map[string][]string, in []byte, out interface{}) (int, os.Error) {
+	fullHeaders := map[string][]string{}
 	for k, v := range headers {
 		fullHeaders[k] = v
 	}
 	bodyLength := 0
 	if in != nil {
 		bodyLength = len(in)
-		fullHeaders["Content-Type"] = "application/json"
+		fullHeaders["Content-Type"] = []string{"application/json"}
 	}
 	req := http.Request{
 		Method:        method,
@@ -78,7 +78,7 @@ func (p Database) interact(method, url string, headers map[string]string, in []b
 	if err := http_conn.Write(&req); err != nil {
 		return 0, err
 	}
-	r, err := http_conn.Read()
+	r, err := http_conn.Read(&req)
 	if err != nil {
 		return 0, err
 	}
@@ -328,8 +328,8 @@ func (p Database) Retrieve(id string, d interface{}) (string, os.Error) {
 
 // Deletes document given by id and rev.
 func (p Database) Delete(id, rev string) os.Error {
-	headers := map[string]string{
-		"If-Match": rev,
+	headers := map[string][]string{
+		"If-Match": []string{rev},
 	}
 	url := fmt.Sprintf("%s/%s", p.DBURL(), id)
 	ir := response{}
