@@ -69,7 +69,7 @@ func (p Database) interact(method, url string, headers map[string][]string, in [
 	if in != nil {
 		req.Body = &buffer{bytes.NewBuffer(in)}
 	}
-	conn, err := net.Dial("tcp", "", fmt.Sprintf("%s:%s", p.Host, p.Port))
+	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%s", p.Host, p.Port))
 	if err != nil {
 		return 0, err
 	}
