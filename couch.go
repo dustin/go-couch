@@ -25,7 +25,7 @@ func (b *buffer) Close() os.Error { return nil }
 
 // Converts given URL to string containing the body of the response.
 func url_to_buf(url string) []byte {
-	if r, _, err := http.Get(url); err == nil {
+	if r, err := http.Get(url); err == nil {
 		b, err := ioutil.ReadAll(r.Body)
 		r.Body.Close()
 		if err == nil {
