@@ -431,3 +431,32 @@ func TestQuery(t *testing.T) {
 		t.Fatalf("failed to delete design record: %s", err)
 	}
 }
+
+type Issue10 struct {
+	Id    string "_id"
+	Rev   string "_rev"
+	Name  string
+	Email string
+}
+
+func TestIssue10(t *testing.T) {
+	db, err := NewDatabase(TEST_HOST, TEST_PORT, TEST_NAME)
+	if err != nil {
+		t.Fatalf("error connecting to CouchDB: %s", err)
+	}
+	info := Issue10{"user_x", "", "x", "test@localhost"}
+	t.Logf(" pre-Insert: %v\n", info)
+	id, rev, err := db.Insert(info)
+	t.Logf("post-Insert: %v\n", info)
+	t.Logf("id = %s, rev = %s\n", id, rev)
+	if err != nil {
+		t.Fatalf("error inserting Issue10 record")
+	}
+	if id != info.Id {
+		t.Fatalf("id: got %s, expected %s", id, info.Id)
+	}
+	if rev == "" {
+		t.Fatalf("rev: got nothing, expected something")
+	}
+}
+
