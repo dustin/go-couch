@@ -9,6 +9,7 @@ import (
 	"http"
 	"net"
 	"io/ioutil"
+	"url"
 )
 
 var def_hdrs = map[string][]string{}
@@ -24,8 +25,8 @@ func (b *buffer) Read(out []byte) (int, os.Error) {
 func (b *buffer) Close() os.Error { return nil }
 
 // Converts given URL to string containing the body of the response.
-func url_to_buf(url string) []byte {
-	if r, err := http.Get(url); err == nil {
+func url_to_buf(u string) []byte {
+	if r, err := http.Get(u); err == nil {
 		b, err := ioutil.ReadAll(r.Body)
 		r.Body.Close()
 		if err == nil {
@@ -46,7 +47,7 @@ type IdAndRev struct {
 // headers: additional headers to pass to the request
 // in: body of the request
 // out: a structure to fill in with the returned JSON document
-func (p Database) interact(method, url string, headers map[string][]string, in []byte, out interface{}) (int, os.Error) {
+func (p Database) interact(method, u string, headers map[string][]string, in []byte, out interface{}) (int, os.Error) {
 	fullHeaders := map[string][]string{}
 	for k, v := range headers {
 		fullHeaders[k] = v
@@ -65,7 +66,7 @@ func (p Database) interact(method, url string, headers map[string][]string, in [
 		Header:        fullHeaders,
 	}
 	req.TransferEncoding = []string{"chunked"}
-	req.URL, _ = http.ParseURL(url)
+	req.URL, _ = url.Parse(u)
 	if in != nil {
 		req.Body = &buffer{bytes.NewBuffer(in)}
 	}
@@ -111,8 +112,8 @@ func (p Database) DBURL() string {
 
 // Test whether CouchDB is running (ignores Database.Name)
 func (p Database) Running() bool {
-	url := fmt.Sprintf("%s/%s", p.BaseURL(), "_all_dbs")
-	s := url_to_buf(url)
+	u := fmt.Sprintf("%s/%s", p.BaseURL(), "_all_dbs")
+	s := url_to_buf(u)
 	if len(s) > 0 {
 		return true
 	}
@@ -252,9 +253,9 @@ func (p Database) InsertWith(d interface{}, id string) (string, string, os.Error
 
 // Private implementation of insert with given id
 func (p Database) insert_with(json_buf []byte, id string) (string, string, os.Error) {
-	url := fmt.Sprintf("%s/%s", p.DBURL(), http.URLEscape(id))
+	u := fmt.Sprintf("%s/%s", p.DBURL(), url.QueryEscape(id))
 	ir := response{}
-	if _, err := p.interact("PUT", url, def_hdrs, json_buf, &ir); err != nil {
+	if _, err := p.interact("PUT", u, def_hdrs, json_buf, &ir); err != nil {
 		return "", "", err
 	}
 	if !ir.Ok {
@@ -281,9 +282,9 @@ func (p Database) Edit(d interface{}) (string, os.Error) {
 	if id_rev.Rev == "" {
 		return "", os.NewError("Rev not specified in interface (try InsertWith)")
 	}
-	url := fmt.Sprintf("%s/%s", p.DBURL(), http.URLEscape(id_rev.Id))
+	u := fmt.Sprintf("%s/%s", p.DBURL(), url.QueryEscape(id_rev.Id))
 	ir := response{}
-	if _, err = p.interact("PUT", url, def_hdrs, json_buf, &ir); err != nil {
+	if _, err = p.interact("PUT", u, def_hdrs, json_buf, &ir); err != nil {
 		return "", err
 	}
 	return ir.Rev, nil
@@ -331,9 +332,9 @@ func (p Database) Delete(id, rev string) os.Error {
 	headers := map[string][]string{
 		"If-Match": []string{rev},
 	}
-	url := fmt.Sprintf("%s/%s", p.DBURL(), id)
+	u := fmt.Sprintf("%s/%s", p.DBURL(), id)
 	ir := response{}
-	if _, err := p.interact("DELETE", url, headers, nil, &ir); err != nil {
+	if _, err := p.interact("DELETE", u, headers, nil, &ir); err != nil {
 		return err
 	}
 	if !ir.Ok {
@@ -382,7 +383,7 @@ func (p Database) Query(view string, options map[string]interface{}, results int
 	for k, v := range options {
 		switch t := v.(type) {
 		case string:
-			parameters += fmt.Sprintf(`%s="%s"&`, k, http.URLEscape(t))
+			parameters += fmt.Sprintf(`%s="%s"&`, k, url.QueryEscape(t))
 		case int:
 			parameters += fmt.Sprintf(`%s=%d&`, k, t)
 		case bool:
