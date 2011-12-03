@@ -37,8 +37,8 @@ func url_to_buf(u string) []byte {
 }
 
 type IdAndRev struct {
-	Id  string "_id"
-	Rev string "_rev"
+	Id  string `json:"_id"`
+	Rev string `json:"_rev"`
 }
 
 // Sends a query to CouchDB and parses the response back.
@@ -121,7 +121,7 @@ func (p Database) Running() bool {
 }
 
 type database_info struct {
-	Db_name string
+	Db_name string `json:"db_name"`
 	// other stuff too, ignore for now
 }
 

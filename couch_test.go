@@ -35,8 +35,8 @@ type Record struct {
 }
 
 type DBRecord struct {
-	Id   string "_id"
-	Rev  string "_rev"
+	Id   string `json:"_id"`
+	Rev  string `json:"_rev"`
 	Foo  int64
 	Bars []string
 }
@@ -433,8 +433,8 @@ func TestQuery(t *testing.T) {
 }
 
 type Issue10 struct {
-	Id    string "_id"
-	Rev   string "_rev"
+	Id    string `json:"_id"`
+	Rev   string `json:"_rev"`
 	Name  string
 	Email string
 }
