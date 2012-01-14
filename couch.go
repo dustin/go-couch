@@ -38,6 +38,20 @@ func url_to_buf(u string) []byte {
 	return make([]byte, 0)
 }
 
+func unmarshal_url(u string, results interface{}) error {
+	if r, err := http.Get(u); err == nil {
+		defer r.Body.Close()
+
+		d := json.NewDecoder(r.Body)
+		if err := d.Decode(results); err != nil {
+			return err
+		}
+	} else {
+		return err
+	}
+	return nil
+}
+
 type IdAndRev struct {
 	Id  string `json:"_id"`
 	Rev string `json:"_rev"`
@@ -130,7 +144,7 @@ type database_info struct {
 // Test whether specified database exists in specified CouchDB instance
 func (p Database) Exists() bool {
 	di := new(database_info)
-	if err := json.Unmarshal(url_to_buf(p.DBURL()), di); err != nil {
+	if err := unmarshal_url(p.DBURL(), &di); err != nil {
 		return false
 	}
 	if di.Db_name != p.Name {
@@ -423,16 +437,5 @@ func (p Database) Query(view string, options map[string]interface{}, results int
 	}
 	full_url := fmt.Sprintf("%s/%s?%s", p.DBURL(), view, parameters)
 
-	if r, err := http.Get(full_url); err == nil {
-		defer r.Body.Close()
-
-		d := json.NewDecoder(r.Body)
-		if err := d.Decode(results); err != nil {
-			return err
-		}
-	} else {
-		return err
-	}
-
-	return nil
+	return unmarshal_url(full_url, results)
 }
