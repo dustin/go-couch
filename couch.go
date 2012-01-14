@@ -3,13 +3,13 @@ package couch
 
 import (
 	"bytes"
-	"fmt"
-	"errors"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"io/ioutil"
+	"net"
 	"net/http"
 	"net/http/httputil"
-	"net"
-	"io/ioutil"
 	"net/url"
 )
 
@@ -395,10 +395,17 @@ func (p Database) Query(view string, options map[string]interface{}, results int
 		}
 	}
 	full_url := fmt.Sprintf("%s/%s?%s", p.DBURL(), view, parameters)
-	json_buf := url_to_buf(full_url)
 
-	if err := json.Unmarshal(json_buf, results); err != nil {
+	if r, err := http.Get(full_url); err == nil {
+		defer r.Body.Close()
+
+		d := json.NewDecoder(r.Body)
+		if err := d.Decode(results); err != nil {
+			return err
+		}
+	} else {
 		return err
 	}
+
 	return nil
 }
