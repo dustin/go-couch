@@ -353,20 +353,13 @@ func (p Database) EditWith(d interface{}, id, rev string) (string, error) {
 	return p.Edit(m)
 }
 
-// Unmarshals the document matching id to the given interface, returning rev.
-func (p Database) Retrieve(id string, d interface{}) (string, error) {
+// Unmarshals the document matching id to the given interface
+func (p Database) Retrieve(id string, d interface{}) error {
 	if id == "" {
-		return "", errors.New("no id specified")
+		return errors.New("no id specified")
 	}
-	json_buf := url_to_buf(fmt.Sprintf("%s/%s", p.DBURL(), id))
-	id_rev := new(IdAndRev)
-	if err := json.Unmarshal(json_buf, &id_rev); err != nil {
-		return "", err
-	}
-	if id_rev.Id != id {
-		return "", errors.New("invalid id specified")
-	}
-	return id_rev.Rev, json.Unmarshal(json_buf, d)
+
+	return unmarshal_url(fmt.Sprintf("%s/%s", p.DBURL(), id), d)
 }
 
 // Deletes document given by id and rev.
