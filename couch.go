@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -25,18 +24,6 @@ func (b *buffer) Read(out []byte) (int, error) {
 }
 
 func (b *buffer) Close() error { return nil }
-
-// Converts given URL to string containing the body of the response.
-func url_to_buf(u string) []byte {
-	if r, err := http.Get(u); err == nil {
-		b, err := ioutil.ReadAll(r.Body)
-		r.Body.Close()
-		if err == nil {
-			return b
-		}
-	}
-	return make([]byte, 0)
-}
 
 func unmarshal_url(u string, results interface{}) error {
 	if r, err := http.Get(u); err == nil {
@@ -128,9 +115,12 @@ func (p Database) DBURL() string {
 
 // Test whether CouchDB is running (ignores Database.Name)
 func (p Database) Running() bool {
+	dbs := []string{}
 	u := fmt.Sprintf("%s/%s", p.BaseURL(), "_all_dbs")
-	s := url_to_buf(u)
-	if len(s) > 0 {
+	if err := unmarshal_url(u, &dbs); err != nil {
+		return false
+	}
+	if len(dbs) > 0 {
 		return true
 	}
 	return false
