@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strings"
 )
 
 var def_hdrs = map[string][]string{}
@@ -159,6 +160,32 @@ func (p Database) DeleteDatabase() error {
 		return errors.New("Delete database operation returned not-OK")
 	}
 	return nil
+}
+
+// Connect to the database at the given URL.
+// example:   couch.Connect("http://localhost:5984/testdb/")
+func Connect(dburl string) (Database, error) {
+	u, err := url.Parse(dburl)
+	if err != nil {
+		return Database{}, err
+	}
+
+	host := u.Host
+	port := "80"
+	if hp := strings.Split(u.Host, ":"); len(hp) > 1 {
+		host = hp[0]
+		port = hp[1]
+	}
+
+	db := Database{host, port, u.Path[1:]}
+	if !db.Running() {
+		return Database{}, errors.New("CouchDB not running")
+	}
+	if !db.Exists() {
+		return Database{}, errors.New("Database does not exist.")
+	}
+
+	return db, nil
 }
 
 func NewDatabase(host, port, name string) (Database, error) {
