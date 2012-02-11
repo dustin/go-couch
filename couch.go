@@ -1,4 +1,6 @@
 // -*- tab-width: 4 -*-
+
+// CouchDB API
 package couch
 
 import (
