@@ -28,7 +28,22 @@ func (b *buffer) Read(out []byte) (int, error) {
 func (b *buffer) Close() error { return nil }
 
 func unmarshal_url(u string, results interface{}) error {
-	if r, err := http.Get(u); err == nil {
+	req, err := http.NewRequest("GET", u, nil)
+	if err != nil {
+		return err
+	}
+	urlob, err := url.Parse(u)
+	if err != nil {
+		return err
+	}
+
+	if urlob.User != nil {
+		if p, hasp := urlob.User.Password(); hasp {
+			req.SetBasicAuth(urlob.User.Username(), p)
+		}
+	}
+
+	if r, err := http.DefaultClient.Do(req); err == nil {
 		defer r.Body.Close()
 
 		d := json.NewDecoder(r.Body)
@@ -75,6 +90,11 @@ func (p Database) interact(method, u string, headers map[string][]string, in []b
 	if in != nil {
 		req.Body = &buffer{bytes.NewBuffer(in)}
 	}
+	if req.URL.User != nil {
+		if p, hasp := req.URL.User.Password(); hasp {
+			req.SetBasicAuth(req.URL.User.Username(), p)
+		}
+	}
 	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%s", p.Host, p.Port))
 	if err != nil {
 		return 0, err
@@ -102,13 +122,17 @@ func (p Database) interact(method, u string, headers map[string][]string, in []b
 }
 
 type Database struct {
-	Host string
-	Port string
-	Name string
+	Host     string
+	Port     string
+	Name     string
+	authinfo *url.Userinfo
 }
 
 func (p Database) BaseURL() string {
-	return fmt.Sprintf("http://%s:%s", p.Host, p.Port)
+	if p.authinfo == nil {
+		return fmt.Sprintf("http://%s:%s", p.Host, p.Port)
+	}
+	return fmt.Sprintf("http://%s@%s:%s", p.authinfo.String(), p.Host, p.Port)
 }
 
 func (p Database) DBURL() string {
@@ -183,7 +207,7 @@ func Connect(dburl string) (Database, error) {
 		port = hp[1]
 	}
 
-	db := Database{host, port, u.Path[1:]}
+	db := Database{host, port, u.Path[1:], u.User}
 	if !db.Running() {
 		return Database{}, errors.New("CouchDB not running")
 	}
@@ -195,7 +219,7 @@ func Connect(dburl string) (Database, error) {
 }
 
 func NewDatabase(host, port, name string) (Database, error) {
-	db := Database{host, port, name}
+	db := Database{host, port, name, nil}
 	if !db.Running() {
 		return db, errors.New("CouchDB not running")
 	}
