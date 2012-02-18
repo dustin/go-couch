@@ -105,7 +105,7 @@ func (p Database) interact(method, u string, headers map[string][]string, in []b
 		return 0, err
 	}
 	r, err := http_conn.Read(&req)
-	if err != nil {
+	if err != nil && err != httputil.ErrPersistEOF {
 		return 0, err
 	}
 	if r.StatusCode < 200 || r.StatusCode >= 300 {
@@ -114,7 +114,7 @@ func (p Database) interact(method, u string, headers map[string][]string, in []b
 		return r.StatusCode, errors.New("server said: " + r.Status)
 	}
 	decoder := json.NewDecoder(r.Body)
-	if err = decoder.Decode(out); err != nil {
+	if err = decoder.Decode(out); err != nil && err != httputil.ErrPersistEOF {
 		return 0, err
 	}
 	r.Body.Close()
