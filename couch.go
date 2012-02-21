@@ -440,8 +440,11 @@ func (p Database) Query(view string, options map[string]interface{}, results int
 		case bool:
 			parameters += fmt.Sprintf(`%s=%v&`, k, t)
 		default:
-			// TODO more types are supported
-			panic(fmt.Sprintf("unsupported value-type %T in Query", t))
+			b, err := json.Marshal(v)
+			if err != nil {
+				panic(fmt.Sprintf("unsupported value-type %T in Query, json encoder said %v", t, err))
+			}
+			parameters += fmt.Sprintf(`%s=%v&`, k, string(b))
 		}
 	}
 	full_url := fmt.Sprintf("%s/%s?%s", p.DBURL(), view, parameters)
