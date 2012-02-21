@@ -17,6 +17,11 @@ import (
 
 var def_hdrs = map[string][]string{}
 
+type HttpError struct {
+	Status int
+	Msg    string
+}
+
 type buffer struct {
 	b *bytes.Buffer
 }
@@ -26,6 +31,10 @@ func (b *buffer) Read(out []byte) (int, error) {
 }
 
 func (b *buffer) Close() error { return nil }
+
+func (e *HttpError) Error() string {
+	return e.Msg
+}
 
 func unmarshal_url(u string, results interface{}) error {
 	req, err := http.NewRequest("GET", u, nil)
@@ -111,7 +120,7 @@ func (p Database) interact(method, u string, headers map[string][]string, in []b
 	if r.StatusCode < 200 || r.StatusCode >= 300 {
 		b := []byte{}
 		r.Body.Read(b)
-		return r.StatusCode, errors.New("server said: " + r.Status)
+		return r.StatusCode, &HttpError{r.StatusCode, r.Status}
 	}
 	decoder := json.NewDecoder(r.Body)
 	if err = decoder.Decode(out); err != nil && err != httputil.ErrPersistEOF {
