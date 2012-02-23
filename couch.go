@@ -52,12 +52,17 @@ func unmarshal_url(u string, results interface{}) error {
 		}
 	}
 
-	if r, err := http.DefaultClient.Do(req); err == nil {
-		defer r.Body.Close()
+	r, err := http.DefaultClient.Do(req)
 
-		d := json.NewDecoder(r.Body)
-		if err := d.Decode(results); err != nil {
-			return err
+	if err == nil {
+		defer r.Body.Close()
+		if r.StatusCode == 200 {
+			d := json.NewDecoder(r.Body)
+			if err := d.Decode(results); err != nil {
+				return err
+			}
+		} else {
+			return &HttpError{r.StatusCode, r.Status}
 		}
 	} else {
 		return err
