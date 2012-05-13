@@ -281,6 +281,25 @@ type response struct {
 	Reason string
 }
 
+// Bulk modification interface.
+// Each item should be JSON serializable into a valid document.
+// "_id" and "_rev" will be honored.
+// To delete, add a "_deleted" field with a value of "true" as well
+// as a valid "_rev" field.
+func (p Database) Bulk(docs []interface{}) (results []response, err error) {
+	m := map[string]interface{}{}
+	m["docs"] = docs
+	var json_buf []byte
+	json_buf, err = json.Marshal(m)
+	if err != nil {
+		return
+	}
+
+	results = make([]response, 0, len(docs))
+	_, err = p.interact("POST", p.DBURL()+"/_bulk_docs", def_hdrs, json_buf, &results)
+	return
+}
+
 // Inserts document to CouchDB, returning id and rev on success.
 // Document may specify both "_id" and "_rev" fields (will overwrite existing)
 //	or just "_id" (will use that id, but not overwrite existing)
