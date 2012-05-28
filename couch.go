@@ -8,11 +8,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"log"
 	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strconv"
 	"strings"
+	"time"
 )
 
 var def_hdrs = map[string][]string{}
@@ -483,4 +487,99 @@ func (p Database) Query(view string, options map[string]interface{}, results int
 	full_url := fmt.Sprintf("%s/%s?%s", p.DBURL(), view, parameters)
 
 	return unmarshal_url(full_url, results)
+}
+
+// Result from GetInfo
+type DBInfo struct {
+	Name        string `json:"db_name"`
+	DocCount    int64  `json:"doc_count"`
+	DocDelCount int64  `json:"doc_del_count"`
+	UpdateSeq   int64  `json:"update_seq"`
+	PurgeSeq    int64  `json:"purge_seq"`
+	Compacting  bool   `json:"compact_running"`
+	DiskSize    int64  `json:"disk_size"`
+	DataSize    int64  `json:"data_size"`
+	StartTime   string `json:"instance_start_time"`
+	Version     int    `json:"disk_format_version"`
+	CommitedSeq int64  `json:"committed_update_seq"`
+}
+
+// Get the DBInfo for this database.
+func (p Database) GetInfo() (DBInfo, error) {
+	rv := DBInfo{}
+	err := unmarshal_url(p.DBURL(), &rv)
+	return rv, err
+}
+
+// Handle the stream of changes coming from a Changes thing.
+//
+// The handler returns the next sequence number when the stream should
+// be resumed, otherwise -1 to indicate the changes feed should stop.
+//
+// The handler may return at any time to restart the stream from the
+// sequence number in indicated in its return value.
+type ChangeHandler func(r io.Reader) int64
+
+// Feed the changes.
+//
+// The handler receives the body of the stream and is expected to consume
+// the contents.
+func (p Database) Changes(handler ChangeHandler,
+	options map[string]interface{}) error {
+
+	largest := int64(0)
+	if l, ok := options["since"]; ok {
+		switch i := l.(type) {
+		case int:
+			largest = int64(i)
+		case int64:
+			largest = i
+		case float64:
+			largest = int64(i)
+		case string:
+			l, err := strconv.ParseInt(i, 10, 64)
+			if err != nil {
+				return err
+			}
+			largest = l
+		default:
+			return fmt.Errorf("Unknown type for 'since' param: %T", l)
+		}
+	}
+
+	for largest >= 0 {
+		params := url.Values{}
+		for k, v := range options {
+			params.Set(k, fmt.Sprintf("%v", v))
+		}
+		if largest > 0 {
+			params.Set("since", fmt.Sprintf("%v", largest))
+		}
+		full_url := fmt.Sprintf("%s/_changes?%s", p.DBURL(),
+			params.Encode())
+
+		var conn net.Conn
+
+		// Swapping out the transport to work around a bug.
+		client := &http.Client{Transport: &http.Transport{
+			Dial: func(n, addr string) (net.Conn, error) {
+				var err error
+				conn, err = net.Dial(n, addr)
+				return conn, err
+			},
+		}}
+
+		resp, err := client.Get(full_url)
+		if err == nil {
+			func() {
+				defer resp.Body.Close()
+				defer conn.Close()
+				largest = handler(resp.Body)
+			}()
+		} else {
+			log.Printf("Error in stream: %v", err)
+			time.Sleep(time.Second * 1)
+		}
+	}
+	return nil
 }
