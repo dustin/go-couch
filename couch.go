@@ -520,6 +520,21 @@ func (p Database) GetInfo() (DBInfo, error) {
 // sequence number in indicated in its return value.
 type ChangeHandler func(r io.Reader) int64
 
+type timeoutClient struct {
+	body        io.ReadCloser
+	socket      net.Conn
+	readTimeout time.Duration
+}
+
+func (tc *timeoutClient) Read(p []byte) (n int, err error) {
+	tc.socket.SetReadDeadline(time.Now().Add(tc.readTimeout))
+	return tc.body.Read(p)
+}
+
+func (tc *timeoutClient) Close() error {
+	return tc.body.Close()
+}
+
 // Feed the changes.
 //
 // The handler receives the body of the stream and is expected to consume
@@ -547,6 +562,10 @@ func (p Database) Changes(handler ChangeHandler,
 		}
 	}
 
+	heartbeatTime := 5000
+
+	timeout := time.Millisecond * time.Duration(heartbeatTime*2)
+
 	for largest >= 0 {
 		params := url.Values{}
 		for k, v := range options {
@@ -555,6 +574,9 @@ func (p Database) Changes(handler ChangeHandler,
 		if largest > 0 {
 			params.Set("since", fmt.Sprintf("%v", largest))
 		}
+
+		params.Set("heartbeat", fmt.Sprintf("%d", heartbeatTime))
+
 		full_url := fmt.Sprintf("%s/_changes?%s", p.DBURL(),
 			params.Encode())
 
@@ -574,7 +596,9 @@ func (p Database) Changes(handler ChangeHandler,
 			func() {
 				defer resp.Body.Close()
 				defer conn.Close()
-				largest = handler(resp.Body)
+
+				tc := timeoutClient{resp.Body, conn, timeout}
+				largest = handler(&tc)
 			}()
 		} else {
 			log.Printf("Error in stream: %v", err)
