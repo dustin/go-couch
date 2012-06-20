@@ -2,8 +2,8 @@
 package couch
 
 import (
-	"testing"
 	"reflect"
+	"testing"
 )
 
 const (
@@ -67,15 +67,12 @@ func TestRetrieve(t *testing.T) {
 		t.Fatalf("failed to insert record: %s", err)
 	}
 	db_r := new(DBRecord)
-	rev, err := db.Retrieve(id, db_r)
+	err = db.Retrieve(id, db_r)
 	if err != nil {
 		t.Fatalf("failed to retrieve record: %s", err)
 	}
 	if id != db_r.Id {
 		t.Fatalf("id: expected %s, got %s", id, db_r.Id)
-	}
-	if rev != db_r.Rev {
-		t.Fatalf("rev: expected %s, got %s", rev, db_r.Rev)
 	}
 	if db_r.Foo != r.Foo {
 		t.Fatalf("foo: expected %d, got %d", r.Foo, db_r.Foo)
@@ -99,7 +96,7 @@ func TestEdit(t *testing.T) {
 		t.Fatalf("failed to insert record: %s", err)
 	}
 	db_r := new(DBRecord)
-	if _, err := db.Retrieve(id, db_r); err != nil {
+	if err := db.Retrieve(id, db_r); err != nil {
 		t.Fatalf("failed to retrieve record: %s", err)
 	}
 	db_r.Foo = 34
@@ -108,7 +105,7 @@ func TestEdit(t *testing.T) {
 		t.Fatalf("failed to edit record %s:%s: %s", id, rev, err)
 	}
 	r2 := new(Record)
-	if _, err := db.Retrieve(id, r2); err != nil {
+	if err := db.Retrieve(id, r2); err != nil {
 		t.Fatalf("failed to re-retrieve record: %s", err)
 	}
 	if r2.Foo != 34 {
@@ -135,7 +132,7 @@ func TestManualEdit(t *testing.T) {
 		t.Fatalf("failed to edit record %s:%s: %s", id, rev, err)
 	}
 	r2 := new(Record)
-	if _, err := db.Retrieve(id, r2); err != nil {
+	if err := db.Retrieve(id, r2); err != nil {
 		t.Fatalf("failed to re-retrieve record: %s", err)
 	}
 	if r2.Foo != 34 {
@@ -167,7 +164,7 @@ func TestInsertId(t *testing.T) {
 		t.Fatalf("error connecting to CouchDB: %s", err)
 	}
 	r := DBRecord{"my_test_id", "", 42, []string{"one", "two"}}
-	id, rev, err := db.Insert(r)
+	id, _, err := db.Insert(r)
 	if err != nil {
 		t.Fatalf("failed to insert record: %s", err)
 	}
@@ -175,22 +172,19 @@ func TestInsertId(t *testing.T) {
 		t.Fatalf("specified id: expected %s, got %s", r.Id, id)
 	}
 	db_r := new(DBRecord)
-	rev, err = db.Retrieve(id, db_r)
+	err = db.Retrieve(id, db_r)
 	if err != nil {
 		t.Fatalf("failed to retrieve record: %s", err)
 	}
 	if id != db_r.Id {
 		t.Fatalf("id: expected %s, got %s", id, db_r.Id)
 	}
-	if rev != db_r.Rev {
-		t.Fatalf("rev: expected %s, got %s", rev, db_r.Rev)
-	}
 	db_r.Foo = 24
-	rev, err = db.Edit(db_r)
+	_, err = db.Edit(db_r)
 	if err != nil {
 		t.Fatalf("failed to edit record: %s", err)
 	}
-	rev, err = db.Retrieve(id, db_r)
+	err = db.Retrieve(id, db_r)
 	if err != nil {
 		t.Fatalf("failed to re-retrieve record: %s", err)
 	}
@@ -218,7 +212,7 @@ func TestInsertWith(t *testing.T) {
 		t.Fatalf("with id: expected %s, got %s", my_id, id)
 	}
 	db_r := new(DBRecord)
-	rev, err = db.Retrieve(my_id, db_r)
+	err = db.Retrieve(my_id, db_r)
 	if err != nil {
 		t.Fatalf("failed to retrieve record: %s", err)
 	}
@@ -249,7 +243,7 @@ func TestInsertAsEdit(t *testing.T) {
 		t.Fatalf("with id: expected %s, got %s", my_id, id)
 	}
 	db_r := new(DBRecord)
-	rev, err = db.Retrieve(my_id, db_r)
+	err = db.Retrieve(my_id, db_r)
 	if err != nil {
 		t.Fatalf("failed to retrieve record: %s", err)
 	}
@@ -293,7 +287,7 @@ func TestEditWith(t *testing.T) {
 		t.Fatalf("failed second EditWith: %s", err)
 	}
 	db_r := new(DBRecord)
-	rev, err = db.Retrieve(id, db_r)
+	err = db.Retrieve(id, db_r)
 	if err != nil {
 		t.Fatalf("failed to retrieve record: %s", err)
 	}
@@ -459,4 +453,3 @@ func TestIssue10(t *testing.T) {
 		t.Fatalf("rev: got nothing, expected something")
 	}
 }
-
