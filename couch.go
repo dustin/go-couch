@@ -527,12 +527,38 @@ type timeoutClient struct {
 }
 
 func (tc *timeoutClient) Read(p []byte) (n int, err error) {
-	tc.socket.SetReadDeadline(time.Now().Add(tc.readTimeout))
+	if tc.readTimeout > 0 {
+		tc.socket.SetReadDeadline(time.Now().Add(tc.readTimeout))
+	}
 	return tc.body.Read(p)
 }
 
 func (tc *timeoutClient) Close() error {
 	return tc.body.Close()
+}
+
+func i64defopt(opts map[string]interface{}, k string, def int64) int64 {
+	var rv int64
+
+	if l, ok := opts[k]; ok {
+		switch i := l.(type) {
+		case int:
+			rv = int64(i)
+		case int64:
+			rv = i
+		case float64:
+			rv = int64(i)
+		case string:
+			l, err := strconv.ParseInt(i, 10, 64)
+			if err == nil {
+				rv = l
+			}
+		default:
+			log.Printf("Unknown type for '%s' param: %T", k, l)
+		}
+	}
+
+	return rv
 }
 
 // Feed the changes.
@@ -542,29 +568,14 @@ func (tc *timeoutClient) Close() error {
 func (p Database) Changes(handler ChangeHandler,
 	options map[string]interface{}) error {
 
-	largest := int64(0)
-	if l, ok := options["since"]; ok {
-		switch i := l.(type) {
-		case int:
-			largest = int64(i)
-		case int64:
-			largest = i
-		case float64:
-			largest = int64(i)
-		case string:
-			l, err := strconv.ParseInt(i, 10, 64)
-			if err != nil {
-				return err
-			}
-			largest = l
-		default:
-			return fmt.Errorf("Unknown type for 'since' param: %T", l)
-		}
+	largest := i64defopt(options, "since", 0)
+
+	heartbeatTime := i64defopt(options, "heartbeat", 5000)
+
+	timeout := time.Minute
+	if heartbeatTime > 0 {
+		timeout = time.Millisecond * time.Duration(heartbeatTime*2)
 	}
-
-	heartbeatTime := 5000
-
-	timeout := time.Millisecond * time.Duration(heartbeatTime*2)
 
 	for largest >= 0 {
 		params := url.Values{}
@@ -575,7 +586,11 @@ func (p Database) Changes(handler ChangeHandler,
 			params.Set("since", fmt.Sprintf("%v", largest))
 		}
 
-		params.Set("heartbeat", fmt.Sprintf("%d", heartbeatTime))
+		if heartbeatTime > 0 {
+			params.Set("heartbeat", fmt.Sprintf("%d", heartbeatTime))
+		} else {
+			params.Del("heartbeat")
+		}
 
 		full_url := fmt.Sprintf("%s/_changes?%s", p.DBURL(),
 			params.Encode())
