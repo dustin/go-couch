@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -80,24 +79,26 @@ func (p Database) interact(method, u string, headers map[string][]string, in []b
 	for k, v := range headers {
 		fullHeaders[k] = v
 	}
-	bodyLength := 0
 	if in != nil {
-		bodyLength = len(in)
 		fullHeaders["Content-Type"] = []string{"application/json"}
 	}
-	req := &http.Request{
-		Method:        method,
-		Close:         true,
-		ContentLength: int64(bodyLength),
-		Header:        fullHeaders,
+
+	req, err := http.NewRequest(method, u, bytes.NewReader(in))
+	if err != nil {
+		return 0, err
 	}
-	req.URL, _ = url.Parse(u)
-	if in != nil {
-		req.Body = ioutil.NopCloser(bytes.NewReader(in))
+
+	req.ContentLength = int64(len(in))
+	req.Header = fullHeaders
+	req.Close = true
+
+	uob, err := url.Parse(u)
+	if err != nil {
+		return 0, err
 	}
-	if req.URL.User != nil {
-		if p, hasp := req.URL.User.Password(); hasp {
-			req.SetBasicAuth(req.URL.User.Username(), p)
+	if uob.User != nil {
+		if p, hasp := uob.User.Password(); hasp {
+			req.SetBasicAuth(uob.User.Username(), p)
 		}
 	}
 
