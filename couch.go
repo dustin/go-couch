@@ -305,7 +305,7 @@ func (p Database) insert(json_buf []byte) (string, string, error) {
 		return "", "", err
 	}
 	if !ir.Ok {
-		return "", "", errors.New(fmt.Sprintf("%s: %s", ir.Error, ir.Reason))
+		return "", "", fmt.Errorf("%s: %s", ir.Error, ir.Reason)
 	}
 	return ir.Id, ir.Rev, nil
 }
@@ -328,7 +328,7 @@ func (p Database) insert_with(json_buf []byte, id string) (string, string, error
 		return "", "", err
 	}
 	if !ir.Ok {
-		return "", "", errors.New(fmt.Sprintf("%s: %s", ir.Error, ir.Reason))
+		return "", "", fmt.Errorf("%s: %s", ir.Error, ir.Reason)
 	}
 	return ir.Id, ir.Rev, nil
 }
@@ -400,7 +400,7 @@ func (p Database) Delete(id, rev string) error {
 		return err
 	}
 	if !ir.Ok {
-		return errors.New(fmt.Sprintf("%s: %s", ir.Error, ir.Reason))
+		return fmt.Errorf("%s: %s", ir.Error, ir.Reason)
 	}
 	return nil
 }
