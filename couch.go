@@ -9,10 +9,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
 	"strconv"
 	"strings"
@@ -21,20 +21,15 @@ import (
 
 var def_hdrs = map[string][]string{}
 
+// HTTP Client used by typical requests.
+//
+// Defaults to http.DefaultClient
+var HttpClient = http.DefaultClient
+
 type HttpError struct {
 	Status int
 	Msg    string
 }
-
-type buffer struct {
-	b *bytes.Buffer
-}
-
-func (b *buffer) Read(out []byte) (int, error) {
-	return b.b.Read(out)
-}
-
-func (b *buffer) Close() error { return nil }
 
 func (e *HttpError) Error() string {
 	return e.Msg
@@ -56,7 +51,7 @@ func unmarshal_url(u string, results interface{}) error {
 		}
 	}
 
-	r, err := http.DefaultClient.Do(req)
+	r, err := HttpClient.Do(req)
 
 	if err == nil {
 		defer r.Body.Close()
@@ -95,48 +90,32 @@ func (p Database) interact(method, u string, headers map[string][]string, in []b
 		bodyLength = len(in)
 		fullHeaders["Content-Type"] = []string{"application/json"}
 	}
-	req := http.Request{
+	req := &http.Request{
 		Method:        method,
-		ProtoMajor:    1,
-		ProtoMinor:    1,
 		Close:         true,
 		ContentLength: int64(bodyLength),
 		Header:        fullHeaders,
 	}
-	req.TransferEncoding = []string{"chunked"}
 	req.URL, _ = url.Parse(u)
 	if in != nil {
-		req.Body = &buffer{bytes.NewBuffer(in)}
+		req.Body = ioutil.NopCloser(bytes.NewReader(in))
 	}
 	if req.URL.User != nil {
 		if p, hasp := req.URL.User.Password(); hasp {
 			req.SetBasicAuth(req.URL.User.Username(), p)
 		}
 	}
-	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%s", p.Host, p.Port))
+
+	res, err := HttpClient.Do(req)
 	if err != nil {
 		return 0, err
 	}
-	http_conn := httputil.NewClientConn(conn, nil)
-	defer http_conn.Close()
-	if err := http_conn.Write(&req); err != nil {
-		return 0, err
+	defer res.Body.Close()
+
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		return res.StatusCode, &HttpError{res.StatusCode, res.Status}
 	}
-	r, err := http_conn.Read(&req)
-	if err != nil && err != httputil.ErrPersistEOF {
-		return 0, err
-	}
-	if r.StatusCode < 200 || r.StatusCode >= 300 {
-		b := []byte{}
-		r.Body.Read(b)
-		return r.StatusCode, &HttpError{r.StatusCode, r.Status}
-	}
-	decoder := json.NewDecoder(r.Body)
-	if err = decoder.Decode(out); err != nil && err != httputil.ErrPersistEOF {
-		return 0, err
-	}
-	r.Body.Close()
-	return r.StatusCode, nil
+	return res.StatusCode, json.NewDecoder(res.Body).Decode(out)
 }
 
 type Database struct {
