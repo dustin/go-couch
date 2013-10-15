@@ -52,21 +52,16 @@ func unmarshal_url(u string, results interface{}) error {
 	}
 
 	r, err := HttpClient.Do(req)
-
-	if err == nil {
-		defer r.Body.Close()
-		if r.StatusCode == 200 {
-			d := json.NewDecoder(r.Body)
-			if err := d.Decode(results); err != nil {
-				return err
-			}
-		} else {
-			return &HttpError{r.StatusCode, r.Status}
-		}
-	} else {
+	if err != nil {
 		return err
 	}
-	return nil
+	defer r.Body.Close()
+
+	if r.StatusCode != 200 {
+		return &HttpError{r.StatusCode, r.Status}
+	}
+
+	return json.NewDecoder(r.Body).Decode(results)
 }
 
 type IdAndRev struct {
