@@ -578,6 +578,7 @@ func (p Database) Changes(handler ChangeHandler,
 
 		// Swapping out the transport to work around a bug.
 		client := &http.Client{Transport: &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
 			Dial: func(n, addr string) (net.Conn, error) {
 				var err error
 				conn, err = net.Dial(n, addr)
