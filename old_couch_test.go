@@ -13,12 +13,18 @@ const (
 )
 
 func TestConnectivity(t *testing.T) {
+	if testing.Short() {
+		t.Skipf("Skipping DB test")
+	}
 	if _, err := NewDatabase(TEST_HOST, TEST_PORT, TEST_NAME); err != nil {
 		t.Fatalf("error connecting to CouchDB: %s", err)
 	}
 }
 
 func TestDeleteDatabase(t *testing.T) {
+	if testing.Short() {
+		t.Skipf("Skipping DB test")
+	}
 	db, err := NewDatabase(TEST_HOST, TEST_PORT, TEST_NAME)
 	if err != nil {
 		t.Fatalf("error connecting to CouchDB: %s", err)
@@ -42,6 +48,9 @@ type DBRecord struct {
 }
 
 func TestInsert(t *testing.T) {
+	if testing.Short() {
+		t.Skipf("Skipping DB test")
+	}
 	db, err := NewDatabase(TEST_HOST, TEST_PORT, TEST_NAME)
 	if err != nil {
 		t.Fatalf("error connecting to CouchDB: %s", err)
@@ -57,6 +66,9 @@ func TestInsert(t *testing.T) {
 }
 
 func TestRetrieve(t *testing.T) {
+	if testing.Short() {
+		t.Skipf("Skipping DB test")
+	}
 	db, err := NewDatabase(TEST_HOST, TEST_PORT, TEST_NAME)
 	if err != nil {
 		t.Fatalf("error connecting to CouchDB: %s", err)
@@ -86,6 +98,9 @@ func TestRetrieve(t *testing.T) {
 }
 
 func TestEdit(t *testing.T) {
+	if testing.Short() {
+		t.Skipf("Skipping DB test")
+	}
 	db, err := NewDatabase(TEST_HOST, TEST_PORT, TEST_NAME)
 	if err != nil {
 		t.Fatalf("error connecting to CouchDB: %s", err)
@@ -117,6 +132,9 @@ func TestEdit(t *testing.T) {
 }
 
 func TestManualEdit(t *testing.T) {
+	if testing.Short() {
+		t.Skipf("Skipping DB test")
+	}
 	db, err := NewDatabase(TEST_HOST, TEST_PORT, TEST_NAME)
 	if err != nil {
 		t.Fatalf("error connecting to CouchDB: %s", err)
@@ -144,6 +162,9 @@ func TestManualEdit(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
+	if testing.Short() {
+		t.Skipf("Skipping DB test")
+	}
 	db, err := NewDatabase(TEST_HOST, TEST_PORT, TEST_NAME)
 	if err != nil {
 		t.Fatalf("error connecting to CouchDB: %s", err)
@@ -159,6 +180,9 @@ func TestDelete(t *testing.T) {
 }
 
 func TestInsertId(t *testing.T) {
+	if testing.Short() {
+		t.Skipf("Skipping DB test")
+	}
 	db, err := NewDatabase(TEST_HOST, TEST_PORT, TEST_NAME)
 	if err != nil {
 		t.Fatalf("error connecting to CouchDB: %s", err)
@@ -198,6 +222,9 @@ func TestInsertId(t *testing.T) {
 }
 
 func TestInsertWith(t *testing.T) {
+	if testing.Short() {
+		t.Skipf("Skipping DB test")
+	}
 	db, err := NewDatabase(TEST_HOST, TEST_PORT, TEST_NAME)
 	if err != nil {
 		t.Fatalf("error connecting to CouchDB: %s", err)
@@ -229,6 +256,9 @@ func TestInsertWith(t *testing.T) {
 }
 
 func TestInsertAsEdit(t *testing.T) {
+	if testing.Short() {
+		t.Skipf("Skipping DB test")
+	}
 	db, err := NewDatabase(TEST_HOST, TEST_PORT, TEST_NAME)
 	if err != nil {
 		t.Fatalf("error connecting to CouchDB: %s", err)
@@ -267,6 +297,9 @@ func TestInsertAsEdit(t *testing.T) {
 }
 
 func TestEditWith(t *testing.T) {
+	if testing.Short() {
+		t.Skipf("Skipping DB test")
+	}
 	db, err := NewDatabase(TEST_HOST, TEST_PORT, TEST_NAME)
 	if err != nil {
 		t.Fatalf("error connecting to CouchDB: %s", err)
@@ -304,6 +337,9 @@ func TestEditWith(t *testing.T) {
 }
 
 func TestQueryId(t *testing.T) {
+	if testing.Short() {
+		t.Skipf("Skipping DB test")
+	}
 	db, err := NewDatabase(TEST_HOST, TEST_PORT, TEST_NAME)
 	if err != nil {
 		t.Fatalf("error connecting to CouchDB: %s", err)
@@ -371,6 +407,9 @@ type MyRows struct {
 }
 
 func TestQuery(t *testing.T) {
+	if testing.Short() {
+		t.Skipf("Skipping DB test")
+	}
 	db, err := NewDatabase(TEST_HOST, TEST_PORT, TEST_NAME)
 	if err != nil {
 		t.Fatalf("error connecting to CouchDB: %s", err)
@@ -434,6 +473,9 @@ type Issue10 struct {
 }
 
 func TestIssue10(t *testing.T) {
+	if testing.Short() {
+		t.Skipf("Skipping DB test")
+	}
 	db, err := NewDatabase(TEST_HOST, TEST_PORT, TEST_NAME)
 	if err != nil {
 		t.Fatalf("error connecting to CouchDB: %s", err)
