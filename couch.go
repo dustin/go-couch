@@ -34,20 +34,24 @@ func (e *HttpError) Error() string {
 	return e.Msg
 }
 
-func unmarshal_url(u string, results interface{}) error {
+func createReq(u string) (*http.Request, error) {
 	req, err := http.NewRequest("GET", u, nil)
 	if err != nil {
-		return err
-	}
-	urlob, err := url.Parse(u)
-	if err != nil {
-		return err
+		return nil, err
 	}
 
-	if urlob.User != nil {
-		if p, hasp := urlob.User.Password(); hasp {
-			req.SetBasicAuth(urlob.User.Username(), p)
+	if req.URL.User != nil {
+		if p, hasp := req.URL.User.Password(); hasp {
+			req.SetBasicAuth(req.URL.User.Username(), p)
 		}
+	}
+	return req, nil
+}
+
+func unmarshal_url(u string, results interface{}) error {
+	req, err := createReq(u)
+	if err != nil {
+		return err
 	}
 
 	r, err := HttpClient.Do(req)
@@ -88,19 +92,15 @@ func (p Database) interact(method, u string, headers map[string][]string, in []b
 		return 0, err
 	}
 
+	if req.URL.User != nil {
+		if p, hasp := req.URL.User.Password(); hasp {
+			req.SetBasicAuth(req.URL.User.Username(), p)
+		}
+	}
+
 	req.ContentLength = int64(len(in))
 	req.Header = fullHeaders
 	req.Close = true
-
-	uob, err := url.Parse(u)
-	if err != nil {
-		return 0, err
-	}
-	if uob.User != nil {
-		if p, hasp := uob.User.Password(); hasp {
-			req.SetBasicAuth(uob.User.Username(), p)
-		}
-	}
 
 	res, err := HttpClient.Do(req)
 	if err != nil {
