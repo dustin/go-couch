@@ -445,7 +445,7 @@ func TestQuery(t *testing.T) {
 		t.Fatalf("expected 1 row, but got %d", len(rows.Rows))
 	}
 	if rows.Rows[0].Key != 1 {
-		t.Fatalf("key: expected %d, got %s", 1, rows.Rows[0].Key)
+		t.Fatalf("key: expected %d, got %v", 1, rows.Rows[0].Key)
 	}
 	if rows.Rows[0].Value != 85 {
 		t.Fatalf("value: expected %d, got %d", 85, rows.Rows[0].Value)
