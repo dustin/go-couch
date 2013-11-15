@@ -496,14 +496,16 @@ func (p Database) GetInfo() (DBInfo, error) {
 type ChangeHandler func(r io.Reader) int64
 
 type timeoutClient struct {
-	body        io.ReadCloser
-	socket      net.Conn
+	body       io.ReadCloser
+	underlying interface {
+		SetReadDeadline(time.Time) error
+	}
 	readTimeout time.Duration
 }
 
 func (tc *timeoutClient) Read(p []byte) (n int, err error) {
 	if tc.readTimeout > 0 {
-		tc.socket.SetReadDeadline(time.Now().Add(tc.readTimeout))
+		tc.underlying.SetReadDeadline(time.Now().Add(tc.readTimeout))
 	}
 	return tc.body.Read(p)
 }

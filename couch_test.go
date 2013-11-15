@@ -4,10 +4,12 @@ package couch
 import (
 	"bytes"
 	"encoding/base64"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestHttpError(t *testing.T) {
@@ -151,5 +153,50 @@ func TestUnmarshalBadReq(t *testing.T) {
 		t.Fatalf("Successfully got example?")
 	} else if !strings.Contains(err.Error(), "four-oh-four") {
 		t.Fatalf("Unexpected error: %q", err.Error())
+	}
+}
+
+type testRC struct {
+	bytes, reads int
+	err          error
+}
+
+func (t *testRC) Read(b []byte) (int, error) {
+	t.reads++
+	t.bytes += len(b)
+	return len(b), t.err
+}
+
+func (t *testRC) Close() error {
+	t.err = io.EOF
+	return nil
+}
+
+type testDeadliner int
+
+func (t *testDeadliner) SetReadDeadline(time.Time) error {
+	*t++
+	return nil
+}
+
+func TestTimeoutClient(t *testing.T) {
+	trc := &testRC{}
+	var td testDeadliner
+	tc := timeoutClient{trc, &td, 13}
+	buf := make([]byte, 4096)
+
+	_, err := tc.Read(buf)
+	if err != nil {
+		t.Fatalf("Failed first read: %v", err)
+	}
+	tc.Close()
+	_, err = tc.Read(buf)
+	if err == nil {
+		t.Fatalf("Didn't fail second read")
+	}
+
+	if trc.reads != 2 || trc.bytes != 8192 {
+		t.Errorf("Expected %v reads at %v bytes, got %v / %v",
+			2, 8912, trc.reads, trc.bytes)
 	}
 }
