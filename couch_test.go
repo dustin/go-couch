@@ -103,3 +103,53 @@ func TestUnmarshalURLGolden(t *testing.T) {
 		t.Fatalf("Expected theid/therev, got %v", idr)
 	}
 }
+
+func TestUnmarshURLError(t *testing.T) {
+	err := unmarshal_url("http://%", nil)
+	if err == nil {
+		t.Fatalf("Successfully unmarshalled from nothing?")
+	} else if !strings.Contains(err.Error(), "hexadecimal escape") {
+		t.Fatalf("Unexpected error: %q", err.Error())
+	}
+}
+
+func TestUnmarshSchemeError(t *testing.T) {
+	err := unmarshal_url("mailto:dustin@arpa.in", nil)
+	if err == nil {
+		t.Fatalf("Successfully unmarshalled from nothing?")
+	} else if !strings.Contains(err.Error(), "unsupported protocol") {
+		t.Fatalf("Unexpected error: %q", err.Error())
+	}
+}
+
+type fakeHttp http.Response
+
+func (f fakeHttp) RoundTrip(*http.Request) (*http.Response, error) {
+	p := http.Response(f)
+	return &p, nil
+}
+
+func installFakeHttp(f fakeHttp) *http.Client {
+	rv := HttpClient
+	HttpClient = &http.Client{Transport: f}
+	return rv
+}
+
+func uninstallFakeHttp(h *http.Client) {
+	HttpClient = h
+}
+
+func TestUnmarshalBadReq(t *testing.T) {
+	defer uninstallFakeHttp(installFakeHttp(fakeHttp{
+		StatusCode: 404,
+		Status:     "404 four-oh-four",
+		Body:       ioutil.NopCloser(&bytes.Buffer{}),
+	}))
+
+	err := unmarshal_url("http://www.example.com/", nil)
+	if err == nil {
+		t.Fatalf("Successfully got example?")
+	} else if !strings.Contains(err.Error(), "four-oh-four") {
+		t.Fatalf("Unexpected error: %q", err.Error())
+	}
+}
