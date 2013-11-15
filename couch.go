@@ -515,7 +515,7 @@ func (tc *timeoutClient) Close() error {
 }
 
 func i64defopt(opts map[string]interface{}, k string, def int64) int64 {
-	var rv int64
+	rv := def
 
 	if l, ok := opts[k]; ok {
 		switch i := l.(type) {

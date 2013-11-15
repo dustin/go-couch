@@ -200,3 +200,31 @@ func TestTimeoutClient(t *testing.T) {
 			2, 8912, trc.reads, trc.bytes)
 	}
 }
+
+func TestI64Opt(t *testing.T) {
+	m := map[string]interface{}{
+		"a": 1,
+		"b": int64(2),
+		"c": 3.14,
+		"d": "4",
+		"e": "five",
+		"f": TestI64Opt,
+	}
+
+	tests := map[string]int64{
+		"a": 1,
+		"b": 2,
+		"c": 3,
+		"d": 4,
+		"e": 99,
+		"f": 99,
+	}
+
+	for k, exp := range tests {
+		got := i64defopt(m, k, 99)
+		if got != exp {
+			t.Errorf("Expected %v for %v (%v), got %v",
+				exp, k, m[k], got)
+		}
+	}
+}
