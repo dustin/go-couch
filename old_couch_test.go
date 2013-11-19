@@ -2,6 +2,7 @@
 package couch
 
 import (
+	"math/rand"
 	"reflect"
 	"testing"
 )
@@ -493,5 +494,44 @@ func TestIssue10(t *testing.T) {
 	}
 	if rev == "" {
 		t.Fatalf("rev: got nothing, expected something")
+	}
+}
+
+func TestRev(t *testing.T) {
+	db, err := NewDatabase(TEST_HOST, TEST_PORT, TEST_NAME)
+	if err != nil {
+		t.Fatalf("error connecting to CouchDB: %s", err)
+	}
+
+	// existing doc
+	doc := map[string]string{
+		"_id": "rev_id_test",
+	}
+	_, insertRev, err := db.Insert(doc)
+	if err != nil {
+		t.Fatalf("Error inserting doc for test")
+	}
+
+	rev, err := db.Rev("rev_id_test")
+	if err != nil {
+		t.Fatalf("Error retrieving rev of existing doc: %s", err)
+	}
+	if rev != insertRev {
+		t.Fatalf("Wrong revision: expected %s, got %s\n", insertRev, rev)
+	}
+
+	err = db.Delete("rev_id_test", rev)
+	if err != nil {
+		t.Fatalf("Error cleaning up")
+	}
+
+	// Non existing doc
+	id := string(rand.Int31())
+	rev, err = db.Rev(id)
+	if err != nil {
+		t.Fatalf("Error when retrieving non-existing doc's rev: %s", err)
+	}
+	if rev != "" {
+		t.Fatalf("Error: non-existing doc should have empty rev, got %s", rev)
 	}
 }
