@@ -600,3 +600,38 @@ func (p Database) Changes(handler ChangeHandler,
 	}
 	return nil
 }
+
+// Rev returns the current revision of given id along with an error. If
+// the document doesn't exist and there are no errors, the revision is
+// empty ("")
+func (p Database) Rev(id string) (rev string, err error) {
+	u := fmt.Sprintf("%s/%s", p.DBURL(), id)
+	resp, err := http.Head(u)
+	if err != nil {
+		return "", err
+	}
+
+	if resp.StatusCode == 404 {
+		return "", nil
+	}
+
+	// strip beginning and end quote
+	rawEtag := resp.Header.Get("Etag")
+	if len(rawEtag) == 0 {
+		return "", errors.New("Invalid Etag returned from server")
+	}
+	if len(rawEtag) > 1 {
+		start := 0
+		end := len(rawEtag)
+		if rawEtag[0] == '"' {
+			start = 1
+		}
+		if rawEtag[len(rawEtag)-1] == '"' {
+			end = len(rawEtag) - 1
+		}
+
+		return rawEtag[start:end], nil
+	}
+
+	return "", errors.New("Unreachable")
+}
