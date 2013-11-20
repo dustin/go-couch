@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -153,6 +154,24 @@ func TestUnmarshalBadReq(t *testing.T) {
 		t.Fatalf("Successfully got example?")
 	} else if !strings.Contains(err.Error(), "four-oh-four") {
 		t.Fatalf("Unexpected error: %q", err.Error())
+	}
+}
+
+func TestURLs(t *testing.T) {
+	tests := []struct {
+		db  Database
+		exp string
+	}{
+		{Database{"locohost", "5984", "dbx", nil},
+			"http://locohost:5984/dbx"},
+		{Database{"locohost", "5984", "dbx", url.UserPassword("a", "b")},
+			"http://a:b@locohost:5984/dbx"},
+	}
+	for _, test := range tests {
+		if test.db.DBURL() != test.exp {
+			t.Errorf("Error on %v, expected %v, got %v",
+				test.db, test.exp, test.db.DBURL())
+		}
 	}
 }
 
