@@ -157,6 +157,39 @@ func TestUnmarshalBadReq(t *testing.T) {
 	}
 }
 
+func TestRunningSuccess(t *testing.T) {
+	defer uninstallFakeHttp(installFakeHttp(fakeHttp{
+		StatusCode: 200,
+		Body:       ioutil.NopCloser(strings.NewReader(`["adb"]`)),
+	}))
+	d := Database{}
+	if !d.Running() {
+		t.Fatalf("Expected DB to be considered running.  Wasn't.")
+	}
+}
+
+func TestRunningEmpty(t *testing.T) {
+	defer uninstallFakeHttp(installFakeHttp(fakeHttp{
+		StatusCode: 200,
+		Body:       ioutil.NopCloser(strings.NewReader(`[]`)),
+	}))
+	d := Database{}
+	if d.Running() {
+		t.Fatalf("Expected DB to be considered not running.  Was.")
+	}
+}
+
+func TestRunningError(t *testing.T) {
+	defer uninstallFakeHttp(installFakeHttp(fakeHttp{
+		StatusCode: 200,
+		Body:       ioutil.NopCloser(strings.NewReader(`[`)),
+	}))
+	d := Database{}
+	if d.Running() {
+		t.Fatalf("Expected DB to be considered not running.  Was.")
+	}
+}
+
 func TestURLs(t *testing.T) {
 	tests := []struct {
 		db  Database
