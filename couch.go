@@ -136,13 +136,7 @@ func (p Database) DBURL() string {
 func (p Database) Running() bool {
 	dbs := []string{}
 	u := fmt.Sprintf("%s/%s", p.BaseURL(), "_all_dbs")
-	if err := unmarshal_url(u, &dbs); err != nil {
-		return false
-	}
-	if len(dbs) > 0 {
-		return true
-	}
-	return false
+	return unmarshal_url(u, &dbs) == nil && len(dbs) > 0
 }
 
 type database_info struct {
