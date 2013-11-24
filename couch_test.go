@@ -179,6 +179,33 @@ func TestRunningEmpty(t *testing.T) {
 	}
 }
 
+func TestDBExists(t *testing.T) {
+	defer uninstallFakeHttp(installFakeHttp(fakeHttp{
+		StatusCode: 200,
+		Body:       ioutil.NopCloser(strings.NewReader(`{"db_name": "x"}`)),
+	}))
+	d := Database{Name: "x"}
+	if !d.Exists() {
+		t.Errorf("Expected DB to exist.  Didn't.")
+	}
+
+	installFakeHttp(fakeHttp{
+		StatusCode: 200,
+		Body:       ioutil.NopCloser(strings.NewReader(`{"db_name": "y"}`)),
+	})
+	if d.Exists() {
+		t.Errorf("Expected DB to not exist.  Did.")
+	}
+
+	installFakeHttp(fakeHttp{
+		StatusCode: 200,
+		Body:       ioutil.NopCloser(strings.NewReader(`{"db_name": "`)),
+	})
+	if d.Exists() {
+		t.Errorf("Expected DB to not exist.  Did.")
+	}
+}
+
 func TestRunningError(t *testing.T) {
 	defer uninstallFakeHttp(installFakeHttp(fakeHttp{
 		StatusCode: 200,

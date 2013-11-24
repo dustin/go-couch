@@ -146,14 +146,8 @@ type database_info struct {
 
 // Test whether specified database exists in specified CouchDB instance
 func (p Database) Exists() bool {
-	di := new(database_info)
-	if err := unmarshal_url(p.DBURL(), &di); err != nil {
-		return false
-	}
-	if di.Db_name != p.Name {
-		return false
-	}
-	return true
+	di := &database_info{}
+	return unmarshal_url(p.DBURL(), &di) == nil && di.Db_name == p.Name
 }
 
 func (p Database) create_database() error {
