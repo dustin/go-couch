@@ -92,12 +92,6 @@ func interact(method, u string, headers map[string][]string, in []byte, out inte
 		return 0, err
 	}
 
-	if req.URL.User != nil {
-		if p, hasp := req.URL.User.Password(); hasp {
-			req.SetBasicAuth(req.URL.User.Username(), p)
-		}
-	}
-
 	req.ContentLength = int64(len(in))
 	req.Header = fullHeaders
 	req.Close = true
