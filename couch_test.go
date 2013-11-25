@@ -137,13 +137,17 @@ func TestInteractGolden(t *testing.T) {
 	installClient(&http.Client{Transport: &m})
 
 	idr := IdAndRev{}
-	n, err := interact("POST", u, map[string][]string{}, []byte{'{', '}'}, &idr)
+	n, err := interact("POST", u, map[string][]string{"X-What": []string{"a"}},
+		[]byte{'{', '}'}, &idr)
 	if n != 200 || err != nil {
 		t.Fatalf("Error unmarshaling: %v/%v", n, err)
 	}
 
 	if m.hdrs.Get("Content-Type") != "application/json" {
 		t.Errorf("Expected JSON header, got %q", m.hdrs.Get("Content-Type"))
+	}
+	if m.hdrs.Get("X-What") != "a" {
+		t.Errorf("Expected custom header, got %q\n%v", m.hdrs.Get("X-What"), m.hdrs)
 	}
 
 	if idr.Id != "theid" || idr.Rev != "therev" {
