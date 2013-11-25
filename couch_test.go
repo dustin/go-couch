@@ -71,16 +71,19 @@ func TestReqGen(t *testing.T) {
 type mocktrip struct {
 	expurl string
 	res    []byte
+	rc     int
+	hdrs   http.Header
 }
 
-func (m mocktrip) RoundTrip(req *http.Request) (*http.Response, error) {
+func (m *mocktrip) RoundTrip(req *http.Request) (*http.Response, error) {
 	if m.expurl != req.URL.String() {
 		return nil, &HttpError{400, "Incorrect url: " + req.URL.String()}
 	}
+	m.hdrs = req.Header
 	return &http.Response{
 		Body:       ioutil.NopCloser(bytes.NewReader(m.res)),
 		Status:     "200 OK",
-		StatusCode: 200,
+		StatusCode: m.rc,
 	}, nil
 }
 
@@ -92,9 +95,9 @@ func TestUnmarshalURLGolden(t *testing.T) {
 	defer installClient(http.DefaultClient)
 
 	u := "http://localhost:8654/thing"
-	m := mocktrip{u, []byte(`{"_id": "theid", "_rev": "therev"}`)}
+	m := mocktrip{u, []byte(`{"_id": "theid", "_rev": "therev"}`), 200, nil}
 
-	installClient(&http.Client{Transport: m})
+	installClient(&http.Client{Transport: &m})
 
 	idr := IdAndRev{}
 	err := unmarshal_url(u, &idr)
@@ -120,6 +123,62 @@ func TestUnmarshSchemeError(t *testing.T) {
 	err := unmarshal_url("mailto:dustin@arpa.in", nil)
 	if err == nil {
 		t.Fatalf("Successfully unmarshalled from nothing?")
+	} else if !strings.Contains(err.Error(), "unsupported protocol") {
+		t.Fatalf("Unexpected error: %q", err.Error())
+	}
+}
+
+func TestInteractGolden(t *testing.T) {
+	defer installClient(http.DefaultClient)
+
+	u := "http://localhost:8654/thing"
+	m := mocktrip{u, []byte(`{"_id": "theid", "_rev": "therev"}`), 200, nil}
+
+	installClient(&http.Client{Transport: &m})
+
+	idr := IdAndRev{}
+	n, err := interact("POST", u, map[string][]string{}, []byte{'{', '}'}, &idr)
+	if n != 200 || err != nil {
+		t.Fatalf("Error unmarshaling: %v/%v", n, err)
+	}
+
+	if m.hdrs.Get("Content-Type") != "application/json" {
+		t.Errorf("Expected JSON header, got %q", m.hdrs.Get("Content-Type"))
+	}
+
+	if idr.Id != "theid" || idr.Rev != "therev" {
+		t.Fatalf("Expected theid/therev, got %v", idr)
+	}
+}
+
+func TestInteractBadResp(t *testing.T) {
+	defer installClient(http.DefaultClient)
+
+	u := "http://localhost:8654/thing"
+	m := mocktrip{u, []byte(`{"_id": "theid", "_rev": "therev"}`), 419, nil}
+
+	installClient(&http.Client{Transport: &m})
+
+	idr := IdAndRev{}
+	n, err := interact("POST", u, map[string][]string{}, []byte{'{', '}'}, &idr)
+	if n != 419 || err == nil {
+		t.Fatalf("Expected error 419, got: %v/%v", n, err)
+	}
+}
+
+func TestInteractError(t *testing.T) {
+	_, err := interact("POST", "http://%", map[string][]string{}, nil, nil)
+	if err == nil {
+		t.Fatalf("Successfully interacted with nothing?")
+	} else if !strings.Contains(err.Error(), "hexadecimal escape") {
+		t.Fatalf("Unexpected error: %q", err.Error())
+	}
+}
+
+func TestInteractSchemeError(t *testing.T) {
+	_, err := interact("POST", "mailto:dustin@arpa.in", map[string][]string{}, nil, nil)
+	if err == nil {
+		t.Fatalf("Successfully interacted with nothing?")
 	} else if !strings.Contains(err.Error(), "unsupported protocol") {
 		t.Fatalf("Unexpected error: %q", err.Error())
 	}
