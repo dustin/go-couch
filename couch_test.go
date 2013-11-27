@@ -280,6 +280,62 @@ func TestRunningError(t *testing.T) {
 	}
 }
 
+func TestSimpleOpFail(t *testing.T) {
+	defer uninstallFakeHttp(installFakeHttp(fakeHttp{
+		StatusCode: 500,
+		Status:     "five hundred",
+		Body:       ioutil.NopCloser(strings.NewReader(`{"ok": false}`)),
+	}))
+	d := Database{}
+	if err := d.simpleOp("PUT", "/x", io.EOF); err.Error() != "five hundred" {
+		t.Fatalf("Expected error, got %v", err)
+	}
+}
+
+func TestSimpleOpNotOK(t *testing.T) {
+	defer uninstallFakeHttp(installFakeHttp(fakeHttp{
+		StatusCode: 200,
+		Body:       ioutil.NopCloser(strings.NewReader(`{"ok": false}`)),
+	}))
+	d := Database{}
+	if err := d.simpleOp("PUT", "/x", io.EOF); err != io.EOF {
+		t.Fatalf("Expected error, got %v", err)
+	}
+}
+
+func TestSimpleOpOK(t *testing.T) {
+	defer uninstallFakeHttp(installFakeHttp(fakeHttp{
+		StatusCode: 200,
+		Body:       ioutil.NopCloser(strings.NewReader(`{"ok": true}`)),
+	}))
+	d := Database{}
+	if err := d.simpleOp("PUT", "/x", io.EOF); err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+}
+
+func TestCreateDB(t *testing.T) {
+	defer uninstallFakeHttp(installFakeHttp(fakeHttp{
+		StatusCode: 200,
+		Body:       ioutil.NopCloser(strings.NewReader(`{"ok": true}`)),
+	}))
+	d := Database{}
+	if err := d.create_database(); err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+}
+
+func TestDeleteDB(t *testing.T) {
+	defer uninstallFakeHttp(installFakeHttp(fakeHttp{
+		StatusCode: 200,
+		Body:       ioutil.NopCloser(strings.NewReader(`{"ok": true}`)),
+	}))
+	d := Database{}
+	if err := d.DeleteDatabase(); err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+}
+
 func TestURLs(t *testing.T) {
 	tests := []struct {
 		db  Database

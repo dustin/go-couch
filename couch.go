@@ -144,27 +144,29 @@ func (p Database) Exists() bool {
 	return unmarshal_url(p.DBURL(), &di) == nil && di.Db_name == p.Name
 }
 
-func (p Database) create_database() error {
+func (p Database) simpleOp(method, url string, nokerr error) error {
 	ir := Response{}
-	if _, err := interact("PUT", p.DBURL(), def_hdrs, nil, &ir); err != nil {
+	if _, err := interact(method, url, def_hdrs, nil, &ir); err != nil {
 		return err
 	}
 	if !ir.Ok {
-		return errors.New("Create database operation returned not-OK")
+		return nokerr
 	}
 	return nil
 }
 
+var (
+	errNewDB = errors.New("Create database operation returned not-OK")
+	errDelDB = errors.New("Delete database operation returned not-OK")
+)
+
+func (p Database) create_database() error {
+	return p.simpleOp("PUT", p.DBURL(), errNewDB)
+}
+
 // Deletes the given database and all documents
 func (p Database) DeleteDatabase() error {
-	ir := Response{}
-	if _, err := interact("DELETE", p.DBURL(), def_hdrs, nil, &ir); err != nil {
-		return err
-	}
-	if !ir.Ok {
-		return errors.New("Delete database operation returned not-OK")
-	}
-	return nil
+	return p.simpleOp("DELETE", p.DBURL(), errDelDB)
 }
 
 // Connect to the database at the given URL.
