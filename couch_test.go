@@ -4,6 +4,7 @@ package couch
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/json"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -424,5 +425,156 @@ func TestI64Opt(t *testing.T) {
 			t.Errorf("Expected %v for %v (%v), got %v",
 				exp, k, m[k], got)
 		}
+	}
+}
+
+func TestMust(t *testing.T) {
+	must(nil) // no panic
+	panicked := false
+	func() {
+		defer func() { panicked = recover() != nil }()
+		must(io.EOF)
+	}()
+	if !panicked {
+		t.Fatalf("Expected a panic, but didn't get one")
+	}
+}
+
+func TestCleanJSON(t *testing.T) {
+	j, id, rev, err := clean_JSON(struct {
+		Key string
+		Id  string `json:"_id"`
+		Rev string `json:"_rev"`
+	}{"aqui", "aid", "arev"})
+	m := map[string]interface{}{}
+	err = json.Unmarshal(j, &m)
+	if err != nil {
+		t.Fatalf("Error in struct literal parsing: %v", err)
+	}
+	if id != "aid" {
+		t.Errorf(`Expected id="aid", got %q`, id)
+	}
+	if rev != "arev" {
+		t.Errorf(`Expected rev="arev", got %q`, rev)
+	}
+	if len(m) != 1 {
+		t.Errorf("Expected one key, got %v", m)
+	}
+
+	j, id, rev, err = clean_JSON(map[string]string{
+		"Key":  "anotherkey",
+		"_id":  "mid",
+		"_rev": "mrev"})
+
+	m = map[string]interface{}{}
+	err = json.Unmarshal(j, &m)
+	if err != nil {
+		t.Fatalf("Error in struct map parsing: %v", err)
+	}
+	if id != "mid" {
+		t.Errorf(`Expected id="mid", got %q`, id)
+	}
+	if rev != "mrev" {
+		t.Errorf(`Expected rev="mrev", got %q`, rev)
+	}
+	if len(m) != 1 {
+		t.Errorf("Expected one key, got %v", m)
+	}
+}
+
+func TestCleanJSONNoRev(t *testing.T) {
+	j, id, rev, err := clean_JSON(map[string]string{
+		"Key": "third",
+		"_id": "timid"})
+
+	m := map[string]interface{}{}
+	err = json.Unmarshal(j, &m)
+	if err != nil {
+		t.Fatalf("Error in struct map parsing: %v", err)
+	}
+	if id != "timid" {
+		t.Errorf(`Expected id="timid", got %q`, id)
+	}
+	if rev != "" {
+		t.Errorf(`Expected empty rev, got %q`, rev)
+	}
+	if len(m) != 1 {
+		t.Errorf("Expected one key, got %v", m)
+	}
+
+}
+
+func TestCleanJSONNonStringID(t *testing.T) {
+	j, id, rev, err := clean_JSON(map[string]interface{}{
+		"Key": "third",
+		"_id": 3.141592})
+
+	m := map[string]interface{}{}
+	err = json.Unmarshal(j, &m)
+	if err != nil {
+		t.Fatalf("Error in struct map parsing: %v", err)
+	}
+	if id != "" {
+		t.Errorf(`Expected empty id, got %q`, id)
+	}
+	if rev != "" {
+		t.Errorf(`Expected empty rev, got %q`, rev)
+	}
+	if len(m) != 1 {
+		t.Errorf("Expected one key, got %v", m)
+	}
+
+}
+
+func TestCleanJSONNonStringRev(t *testing.T) {
+	j, id, rev, err := clean_JSON(map[string]interface{}{
+		"Key":  "third",
+		"_rev": 3.141592})
+
+	m := map[string]interface{}{}
+	err = json.Unmarshal(j, &m)
+	if err != nil {
+		t.Fatalf("Error in struct map parsing: %v", err)
+	}
+	if id != "" {
+		t.Errorf(`Expected empty id, got %q`, id)
+	}
+	if rev != "" {
+		t.Errorf(`Expected empty rev, got %q`, rev)
+	}
+	if len(m) != 1 {
+		t.Errorf("Expected one key, got %v", m)
+	}
+
+}
+
+func TestCleanJSONNoId(t *testing.T) {
+	j, id, rev, err := clean_JSON(map[string]string{
+		"Key":  "third",
+		"_rev": "theengine"})
+
+	m := map[string]interface{}{}
+	err = json.Unmarshal(j, &m)
+	if err != nil {
+		t.Fatalf("Error in struct map parsing: %v", err)
+	}
+	if id != "" {
+		t.Errorf(`Expected id="", got %q`, id)
+	}
+	if rev != "theengine" {
+		t.Errorf(`Expected rev="theengine", got %q`, rev)
+	}
+	if len(m) != 1 {
+		t.Errorf("Expected one key, got %v", m)
+	}
+
+}
+
+func TestCleanJSONError(t *testing.T) {
+	// error
+	j, id, rev, err := clean_JSON(make(chan bool))
+	if err == nil {
+		t.Errorf("Expected error encoding chan, got %s (id=%v, rev=%v)",
+			j, id, rev)
 	}
 }

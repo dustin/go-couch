@@ -208,6 +208,12 @@ func NewDatabase(host, port, name string) (Database, error) {
 	return db, nil
 }
 
+func must(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
 // Strip _id and _rev from d, returning them separately if they exist
 func clean_JSON(d interface{}) (json_buf []byte, id, rev string, err error) {
 	json_buf, err = json.Marshal(d)
@@ -215,23 +221,11 @@ func clean_JSON(d interface{}) (json_buf []byte, id, rev string, err error) {
 		return
 	}
 	m := map[string]interface{}{}
-	err = json.Unmarshal(json_buf, &m)
-	if err != nil {
-		return
-	}
-	id_rev := new(IdAndRev)
-	err = json.Unmarshal(json_buf, &id_rev)
-	if err != nil {
-		return
-	}
-	if _, ok := m["_id"]; ok {
-		id = id_rev.Id
-		delete(m, "_id")
-	}
-	if _, ok := m["_rev"]; ok {
-		rev = id_rev.Rev
-		delete(m, "_rev")
-	}
+	must(json.Unmarshal(json_buf, &m))
+	id, _ = m["_id"].(string)
+	delete(m, "_id")
+	rev, _ = m["_rev"].(string)
+	delete(m, "_rev")
 	json_buf, err = json.Marshal(m)
 	return
 }
