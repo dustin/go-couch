@@ -1,6 +1,6 @@
 // -*- tab-width: 4 -*-
 
-// CouchDB API
+// Package couch provides a CouchDB API.
 package couch
 
 import (
@@ -25,6 +25,7 @@ var defaultHdrs = map[string][]string{}
 // Defaults to http.DefaultClient
 var HttpClient = http.DefaultClient
 
+// HttpError represents errors returned from unsuccessful HTTP requests.
 type HttpError struct {
 	Status int
 	Msg    string
@@ -156,8 +157,8 @@ func (p Database) simpleOp(method, url string, nokerr error) error {
 }
 
 var (
-	errNewDB = errors.New("Create database operation returned not-OK")
-	errDelDB = errors.New("Delete database operation returned not-OK")
+	errNewDB = errors.New("create database operation returned not-OK")
+	errDelDB = errors.New("delete database operation returned not-OK")
 )
 
 func (p Database) createDatabase() error {
@@ -168,6 +169,8 @@ func (p Database) createDatabase() error {
 func (p Database) DeleteDatabase() error {
 	return p.simpleOp("DELETE", p.DBURL(), errDelDB)
 }
+
+var errNotRunning = errors.New("CouchDB not running")
 
 // Connect to the database at the given URL.
 // example:   couch.Connect("http://localhost:5984/testdb/")
@@ -186,10 +189,10 @@ func Connect(dburl string) (Database, error) {
 
 	db := Database{host, port, u.Path[1:], u.User}
 	if !db.Running() {
-		return Database{}, errors.New("CouchDB not running")
+		return Database{}, errNotRunning
 	}
 	if !db.Exists() {
-		return Database{}, errors.New("Database does not exist.")
+		return Database{}, errors.New("database does not exist")
 	}
 
 	return db, nil
@@ -198,7 +201,7 @@ func Connect(dburl string) (Database, error) {
 func NewDatabase(host, port, name string) (Database, error) {
 	db := Database{host, port, name, nil}
 	if !db.Running() {
-		return db, errors.New("CouchDB not running")
+		return db, errNotRunning
 	}
 	if !db.Exists() {
 		if err := db.createDatabase(); err != nil {
@@ -325,10 +328,10 @@ func (p Database) Edit(d interface{}) (string, error) {
 		return "", err
 	}
 	if id_rev.Id == "" {
-		return "", errors.New("Id not specified in interface")
+		return "", errors.New("id not specified in interface")
 	}
 	if id_rev.Rev == "" {
-		return "", errors.New("Rev not specified in interface (try InsertWith)")
+		return "", errors.New("rev not specified in interface (try InsertWith)")
 	}
 	u := fmt.Sprintf("%s/%s", p.DBURL(), url.QueryEscape(id_rev.Id))
 	ir := Response{}
@@ -343,7 +346,7 @@ func (p Database) Edit(d interface{}) (string, error) {
 // be overwritten with the passed values.
 func (p Database) EditWith(d interface{}, id, rev string) (string, error) {
 	if id == "" || rev == "" {
-		return "", errors.New("EditWith: must specify both id and rev")
+		return "", errors.New("must specify both id and rev")
 	}
 	jsonBuf, err := json.Marshal(d)
 	if err != nil {
