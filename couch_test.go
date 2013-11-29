@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -576,5 +577,44 @@ func TestCleanJSONError(t *testing.T) {
 	if err == nil {
 		t.Errorf("Expected error encoding chan, got %s (id=%v, rev=%v)",
 			j, id, rev)
+	}
+}
+
+func TestBulk(t *testing.T) {
+	hres := `[{"ok": true, "id": "d1"},{"ok": true, "id": "d2"}]`
+	defer uninstallFakeHttp(installFakeHttp(fakeHttp{
+		StatusCode: 200,
+		Body:       ioutil.NopCloser(strings.NewReader(hres)),
+	}))
+	d := Database{}
+	docs := []interface{}{
+		map[string]string{"k": "v"},
+		map[string]string{"k2": "v2"},
+	}
+	res, err := d.Bulk(docs)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	exp := []Response{
+		Response{Ok: true, Id: "d1"},
+		Response{Ok: true, Id: "d2"},
+	}
+
+	if !reflect.DeepEqual(exp, res) {
+		t.Errorf("Expected %v, got %v", exp, res)
+	}
+}
+
+func TestBulkBadInput(t *testing.T) {
+	defer uninstallFakeHttp(installFakeHttp(fakeHttp{
+		StatusCode: -1,
+		Body:       ioutil.NopCloser(&bytes.Buffer{}),
+	}))
+	d := Database{}
+	docs := []interface{}{make(chan bool)}
+	res, err := d.Bulk(docs)
+	if err == nil {
+		t.Fatalf("Expected error, got %v", res)
 	}
 }
