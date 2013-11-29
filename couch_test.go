@@ -712,5 +712,31 @@ func TestPrivateInsertWithOK(t *testing.T) {
 	if rev != "11" {
 		t.Errorf(`Expected rev="11", got %v`, rev)
 	}
+}
 
+func TestRetrieveInvalid(t *testing.T) {
+	d := Database{}
+	err := d.Retrieve("", nil)
+	if err != errNoID {
+		t.Fatalf("Expected 'no ID' error, got %v", err)
+	}
+}
+
+func TestRetrieveValid(t *testing.T) {
+	defer installClient(http.DefaultClient)
+
+	u := "http://localhost:8654/thing"
+	m := mocktrip{u, []byte(`{"_id": "theid", "_rev": "therev", "val": "EX"}`), 200, nil}
+
+	installClient(&http.Client{Transport: &m})
+
+	s := struct{ Val string }{}
+	err := unmarshalURL(u, &s)
+	if err != nil {
+		t.Fatalf("Error unmarshaling: %v", err)
+	}
+
+	if s.Val != "EX" {
+		t.Fatalf("Expected EX, got %v", s.Val)
+	}
 }

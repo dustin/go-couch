@@ -362,10 +362,12 @@ func (p Database) EditWith(d interface{}, id, rev string) (string, error) {
 	return p.Edit(m)
 }
 
+var errNoID = errors.New("no id specified")
+
 // Unmarshals the document matching id to the given interface
 func (p Database) Retrieve(id string, d interface{}) error {
 	if id == "" {
-		return errors.New("no id specified")
+		return errNoID
 	}
 
 	return unmarshalURL(fmt.Sprintf("%s/%s", p.DBURL(), id), d)
