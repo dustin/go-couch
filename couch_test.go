@@ -618,3 +618,51 @@ func TestBulkBadInput(t *testing.T) {
 		t.Fatalf("Expected error, got %v", res)
 	}
 }
+
+func TestPrivateInsertError(t *testing.T) {
+	defer installClient(http.DefaultClient)
+
+	u := "http://localhost:8654/thing"
+	m := mocktrip{u, []byte(`{"_id": "theid", "_rev": "therev"}`), 419, nil}
+
+	installClient(&http.Client{Transport: &m})
+
+	d := Database{}
+	id, rev, err := d.insert(nil)
+	if err == nil {
+		t.Fatalf("Expected error 419, got: %v/%v/%v", id, rev, err)
+	}
+}
+
+func TestPrivateInsertNotOK(t *testing.T) {
+	hres := `{"ok": false, "error": "Broken", "reason": "Because"}`
+	defer uninstallFakeHttp(installFakeHttp(fakeHttp{
+		StatusCode: 200,
+		Body:       ioutil.NopCloser(strings.NewReader(hres)),
+	}))
+	d := Database{}
+	id, res, err := d.insert(nil)
+	if err == nil {
+		t.Fatalf("Expected error, got %v/%v", id, res)
+	}
+}
+
+func TestPrivateInsertOK(t *testing.T) {
+	hres := `{"ok": true, "id": "one", "rev": "11"}`
+	defer uninstallFakeHttp(installFakeHttp(fakeHttp{
+		StatusCode: 200,
+		Body:       ioutil.NopCloser(strings.NewReader(hres)),
+	}))
+	d := Database{}
+	id, rev, err := d.insert(nil)
+	if err != nil {
+		t.Fatalf("Expected success, got %v", err)
+	}
+	if id != "one" {
+		t.Errorf(`Expected id="one", got %v`, id)
+	}
+	if rev != "11" {
+		t.Errorf(`Expected rev="11", got %v`, rev)
+	}
+
+}
