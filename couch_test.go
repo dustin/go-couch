@@ -102,7 +102,7 @@ func TestUnmarshalURLGolden(t *testing.T) {
 	installClient(&http.Client{Transport: &m})
 
 	idr := IdAndRev{}
-	err := unmarshal_url(u, &idr)
+	err := unmarshalURL(u, &idr)
 	if err != nil {
 		t.Fatalf("Error unmarshaling: %v", err)
 	}
@@ -113,7 +113,7 @@ func TestUnmarshalURLGolden(t *testing.T) {
 }
 
 func TestUnmarshURLError(t *testing.T) {
-	err := unmarshal_url("http://%", nil)
+	err := unmarshalURL("http://%", nil)
 	if err == nil {
 		t.Fatalf("Successfully unmarshalled from nothing?")
 	} else if !strings.Contains(err.Error(), "hexadecimal escape") {
@@ -122,7 +122,7 @@ func TestUnmarshURLError(t *testing.T) {
 }
 
 func TestUnmarshSchemeError(t *testing.T) {
-	err := unmarshal_url("mailto:dustin@arpa.in", nil)
+	err := unmarshalURL("mailto:dustin@arpa.in", nil)
 	if err == nil {
 		t.Fatalf("Successfully unmarshalled from nothing?")
 	} else if !strings.Contains(err.Error(), "unsupported protocol") {
@@ -214,7 +214,7 @@ func TestUnmarshalBadReq(t *testing.T) {
 		Body:       ioutil.NopCloser(&bytes.Buffer{}),
 	}))
 
-	err := unmarshal_url("http://www.example.com/", nil)
+	err := unmarshalURL("http://www.example.com/", nil)
 	if err == nil {
 		t.Fatalf("Successfully got example?")
 	} else if !strings.Contains(err.Error(), "four-oh-four") {
@@ -322,7 +322,7 @@ func TestCreateDB(t *testing.T) {
 		Body:       ioutil.NopCloser(strings.NewReader(`{"ok": true}`)),
 	}))
 	d := Database{}
-	if err := d.create_database(); err != nil {
+	if err := d.createDatabase(); err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
 }
@@ -442,7 +442,7 @@ func TestMust(t *testing.T) {
 }
 
 func TestCleanJSON(t *testing.T) {
-	j, id, rev, err := clean_JSON(struct {
+	j, id, rev, err := cleanJSON(struct {
 		Key string
 		Id  string `json:"_id"`
 		Rev string `json:"_rev"`
@@ -462,7 +462,7 @@ func TestCleanJSON(t *testing.T) {
 		t.Errorf("Expected one key, got %v", m)
 	}
 
-	j, id, rev, err = clean_JSON(map[string]string{
+	j, id, rev, err = cleanJSON(map[string]string{
 		"Key":  "anotherkey",
 		"_id":  "mid",
 		"_rev": "mrev"})
@@ -484,7 +484,7 @@ func TestCleanJSON(t *testing.T) {
 }
 
 func TestCleanJSONNoRev(t *testing.T) {
-	j, id, rev, err := clean_JSON(map[string]string{
+	j, id, rev, err := cleanJSON(map[string]string{
 		"Key": "third",
 		"_id": "timid"})
 
@@ -506,7 +506,7 @@ func TestCleanJSONNoRev(t *testing.T) {
 }
 
 func TestCleanJSONNonStringID(t *testing.T) {
-	j, id, rev, err := clean_JSON(map[string]interface{}{
+	j, id, rev, err := cleanJSON(map[string]interface{}{
 		"Key": "third",
 		"_id": 3.141592})
 
@@ -528,7 +528,7 @@ func TestCleanJSONNonStringID(t *testing.T) {
 }
 
 func TestCleanJSONNonStringRev(t *testing.T) {
-	j, id, rev, err := clean_JSON(map[string]interface{}{
+	j, id, rev, err := cleanJSON(map[string]interface{}{
 		"Key":  "third",
 		"_rev": 3.141592})
 
@@ -550,7 +550,7 @@ func TestCleanJSONNonStringRev(t *testing.T) {
 }
 
 func TestCleanJSONNoId(t *testing.T) {
-	j, id, rev, err := clean_JSON(map[string]string{
+	j, id, rev, err := cleanJSON(map[string]string{
 		"Key":  "third",
 		"_rev": "theengine"})
 
@@ -573,7 +573,7 @@ func TestCleanJSONNoId(t *testing.T) {
 
 func TestCleanJSONError(t *testing.T) {
 	// error
-	j, id, rev, err := clean_JSON(make(chan bool))
+	j, id, rev, err := cleanJSON(make(chan bool))
 	if err == nil {
 		t.Errorf("Expected error encoding chan, got %s (id=%v, rev=%v)",
 			j, id, rev)
