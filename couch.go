@@ -273,7 +273,7 @@ func (p Database) Insert(d interface{}) (string, string, error) {
 		new_rev, err2 := p.Edit(d)
 		return id, new_rev, err2
 	} else if id != "" {
-		return p.insert_with(jsonBuf, id)
+		return p.insertWith(jsonBuf, id)
 	} else if id == "" {
 		return p.insert(jsonBuf)
 	}
@@ -299,11 +299,11 @@ func (p Database) InsertWith(d interface{}, id string) (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
-	return p.insert_with(jsonBuf, id)
+	return p.insertWith(jsonBuf, id)
 }
 
 // Private implementation of insert with given id
-func (p Database) insert_with(jsonBuf []byte, id string) (string, string, error) {
+func (p Database) insertWith(jsonBuf []byte, id string) (string, string, error) {
 	u := fmt.Sprintf("%s/%s", p.DBURL(), url.QueryEscape(id))
 	ir := Response{}
 	if _, err := interact("PUT", u, defaultHdrs, jsonBuf, &ir); err != nil {

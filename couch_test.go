@@ -676,7 +676,7 @@ func TestPrivateInsertWithError(t *testing.T) {
 	installClient(&http.Client{Transport: &m})
 
 	d := Database{}
-	id, rev, err := d.insert_with(nil, "x")
+	id, rev, err := d.insertWith(nil, "x")
 	if err == nil {
 		t.Fatalf("Expected error 419, got: %v/%v/%v", id, rev, err)
 	}
@@ -689,7 +689,7 @@ func TestPrivateInsertWithNotOK(t *testing.T) {
 		Body:       ioutil.NopCloser(strings.NewReader(hres)),
 	}))
 	d := Database{}
-	id, res, err := d.insert_with(nil, "x")
+	id, res, err := d.insertWith(nil, "x")
 	if err == nil {
 		t.Fatalf("Expected error, got %v/%v", id, res)
 	}
@@ -702,7 +702,7 @@ func TestPrivateInsertWithOK(t *testing.T) {
 		Body:       ioutil.NopCloser(strings.NewReader(hres)),
 	}))
 	d := Database{}
-	id, rev, err := d.insert_with(nil, "x")
+	id, rev, err := d.insertWith(nil, "x")
 	if err != nil {
 		t.Fatalf("Expected success, got %v", err)
 	}
