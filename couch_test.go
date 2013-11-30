@@ -725,13 +725,14 @@ func TestRetrieveInvalid(t *testing.T) {
 func TestRetrieveValid(t *testing.T) {
 	defer installClient(http.DefaultClient)
 
-	u := "http://localhost:8654/thing"
+	u := "http://localhost:5984/thing/ob"
 	m := mocktrip{u, []byte(`{"_id": "theid", "_rev": "therev", "val": "EX"}`), 200, nil}
 
 	installClient(&http.Client{Transport: &m})
 
 	s := struct{ Val string }{}
-	err := unmarshalURL(u, &s)
+	d := Database{Host: "localhost", Port: "5984", Name: "thing"}
+	err := d.Retrieve("ob", &s)
 	if err != nil {
 		t.Fatalf("Error unmarshaling: %v", err)
 	}
