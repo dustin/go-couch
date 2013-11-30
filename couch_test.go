@@ -1,4 +1,3 @@
-// -*- tab-width: 4 -*-
 package couch
 
 import (

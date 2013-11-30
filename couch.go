@@ -1,5 +1,3 @@
-// -*- tab-width: 4 -*-
-
 // Package couch provides a CouchDB API.
 package couch
 
