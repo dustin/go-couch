@@ -740,3 +740,72 @@ func TestRetrieveValid(t *testing.T) {
 		t.Fatalf("Expected EX, got %v", s.Val)
 	}
 }
+
+func TestInsertBadOb(t *testing.T) {
+	d := Database{}
+	id, rev, err := d.Insert(make(chan bool))
+	if err == nil {
+		t.Fatalf("Unexpected success on bad obj: %v/%v", id, rev)
+	}
+}
+
+func TestInsertNew(t *testing.T) {
+	hres := `{"ok": true, "id": "one", "rev": "11"}`
+	defer uninstallFakeHttp(installFakeHttp(fakeHttp{
+		StatusCode: 200,
+		Body:       ioutil.NopCloser(strings.NewReader(hres)),
+	}))
+
+	d := Database{}
+	id, rev, err := d.Insert(map[string]interface{}{})
+	if err != nil {
+		t.Fatalf("Errored: %v", err)
+	}
+	if id != "one" {
+		t.Errorf(`Expected id="one", got %q`, id)
+	}
+	if rev != "11" {
+		t.Errorf(`Expected rev="11", got %q`, id)
+	}
+}
+
+func TestInsertWith(t *testing.T) {
+	hres := `{"ok": true, "id": "one", "rev": "11"}`
+	defer uninstallFakeHttp(installFakeHttp(fakeHttp{
+		StatusCode: 200,
+		Body:       ioutil.NopCloser(strings.NewReader(hres)),
+	}))
+
+	d := Database{}
+	id, rev, err := d.Insert(map[string]interface{}{"_id": "one"})
+	if err != nil {
+		t.Fatalf("Errored: %v", err)
+	}
+	if id != "one" {
+		t.Errorf(`Expected id="one", got %q`, id)
+	}
+	if rev != "11" {
+		t.Errorf(`Expected rev="11", got %q`, id)
+	}
+}
+
+func TestInsertWithRev(t *testing.T) {
+	hres := `{"ok": true, "id": "one", "rev": "11"}`
+	defer uninstallFakeHttp(installFakeHttp(fakeHttp{
+		StatusCode: 200,
+		Body:       ioutil.NopCloser(strings.NewReader(hres)),
+	}))
+
+	d := Database{}
+	id, rev, err := d.Insert(map[string]interface{}{"_id": "one",
+		"_rev": "10"})
+	if err != nil {
+		t.Fatalf("Errored: %v", err)
+	}
+	if id != "one" {
+		t.Errorf(`Expected id="one", got %q`, id)
+	}
+	if rev != "11" {
+		t.Errorf(`Expected rev="11", got %q`, id)
+	}
+}
