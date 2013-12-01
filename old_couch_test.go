@@ -221,7 +221,7 @@ func TestInsertId(t *testing.T) {
 	}
 }
 
-func TestInsertWith(t *testing.T) {
+func TestInsertWithOld(t *testing.T) {
 	if testing.Short() {
 		t.Skipf("Skipping DB test")
 	}
