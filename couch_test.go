@@ -839,3 +839,23 @@ func TestInsertWithRev(t *testing.T) {
 		t.Errorf(`Expected rev="11", got %q`, id)
 	}
 }
+
+func TestDBInfo(t *testing.T) {
+	hres := `{"db_name": "testdb", "doc_count": 38515}`
+	defer uninstallFakeHttp(installFakeHttp(fakeHttp{
+		StatusCode: 200,
+		Body:       ioutil.NopCloser(strings.NewReader(hres)),
+	}))
+
+	d := Database{}
+	info, err := d.GetInfo()
+	if err != nil {
+		t.Fatalf("Expected success, got %v", err)
+	}
+	if info.Name != "testdb" {
+		t.Errorf(`Expected name="testdb", got %q`, info.Name)
+	}
+	if info.DocCount != 38515 {
+		t.Errorf(`Expected count=38515, got %q`, info.DocCount)
+	}
+}
