@@ -194,6 +194,13 @@ type fakeHttp struct {
 }
 
 func (f *fakeHttp) RoundTrip(*http.Request) (*http.Response, error) {
+	if len(f.responses) == 0 {
+		return &http.Response{
+			Status:     "Server Error",
+			StatusCode: 500,
+			Body:       ioutil.NopCloser(&bytes.Buffer{}),
+		}, nil
+	}
 	p := http.Response(f.responses[0])
 	f.responses = f.responses[1:]
 	return &p, nil
@@ -933,5 +940,73 @@ func TestDeleteWithOK(t *testing.T) {
 	err := d.Delete("x", "11")
 	if err != nil {
 		t.Fatalf("Expected success, got %v", err)
+	}
+}
+
+func TestNewDBNotRunning(t *testing.T) {
+	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+		StatusCode: 200,
+		Body:       ioutil.NopCloser(strings.NewReader(`[`)),
+	})))
+	db, err := NewDatabase("localhost", "5984", "db")
+	if err == nil {
+		t.Fatalf("Expected failure, got %v", db)
+	}
+}
+
+func TestNewDBCreateFail(t *testing.T) {
+	defer uninstallFakeHttp(installFakeHttp(&fakeHttp{
+		responses: []http.Response{
+			http.Response{
+				StatusCode: 200,
+				Body:       ioutil.NopCloser(strings.NewReader(`["x"]`)),
+			},
+		},
+	}))
+	db, err := NewDatabase("localhost", "5984", "db")
+	if err == nil {
+		t.Fatalf("Expected failure, got %v", db)
+	}
+}
+
+func TestNewDBCreateExists(t *testing.T) {
+	defer uninstallFakeHttp(installFakeHttp(&fakeHttp{
+		responses: []http.Response{
+			http.Response{
+				StatusCode: 200,
+				Body:       ioutil.NopCloser(strings.NewReader(`["x"]`)),
+			},
+			http.Response{
+				StatusCode: 200,
+				Body:       ioutil.NopCloser(strings.NewReader(`{"db_name": "db"}`)),
+			},
+		},
+	}))
+	_, err := NewDatabase("localhost", "5984", "db")
+	if err != nil {
+		t.Fatalf("Expected succcess, got %v", err)
+	}
+}
+
+func TestNewDBCreateSuccess(t *testing.T) {
+	defer uninstallFakeHttp(installFakeHttp(&fakeHttp{
+		responses: []http.Response{
+			http.Response{
+				StatusCode: 200,
+				Body:       ioutil.NopCloser(strings.NewReader(`["x"]`)),
+			},
+			http.Response{
+				StatusCode: 404,
+				Body:       ioutil.NopCloser(strings.NewReader(``)),
+			},
+			http.Response{
+				StatusCode: 200,
+				Body:       ioutil.NopCloser(strings.NewReader(`{"ok": true}`)),
+			},
+		},
+	}))
+	_, err := NewDatabase("localhost", "5984", "db")
+	if err != nil {
+		t.Fatalf("Expected succcess, got %v", err)
 	}
 }
