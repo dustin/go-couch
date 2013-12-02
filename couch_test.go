@@ -859,3 +859,72 @@ func TestDBInfo(t *testing.T) {
 		t.Errorf(`Expected count=38515, got %q`, info.DocCount)
 	}
 }
+
+func TestDeleteError(t *testing.T) {
+	defer installClient(http.DefaultClient)
+
+	u := "http://localhost:8654/thing"
+	m := mocktrip{u, []byte(`{"_id": "theid", "_rev": "therev"}`), 419, nil}
+
+	installClient(&http.Client{Transport: &m})
+
+	d := Database{}
+	id, rev, err := d.insert(nil)
+	if err == nil {
+		t.Fatalf("Expected error 419, got: %v/%v/%v", id, rev, err)
+	}
+}
+
+func TestDeleteNotOK(t *testing.T) {
+	hres := `{"ok": false, "error": "Broken", "reason": "Because"}`
+	defer uninstallFakeHttp(installFakeHttp(fakeHttp{
+		StatusCode: 200,
+		Body:       ioutil.NopCloser(strings.NewReader(hres)),
+	}))
+	d := Database{}
+	id, res, err := d.insert(nil)
+	if err == nil {
+		t.Fatalf("Expected error, got %v/%v", id, res)
+	}
+}
+
+func TestDeleteWithError(t *testing.T) {
+	defer installClient(http.DefaultClient)
+
+	u := "http://localhost:8654/thing"
+	m := mocktrip{u, []byte(`{"_id": "theid", "_rev": "therev"}`), 419, nil}
+
+	installClient(&http.Client{Transport: &m})
+
+	d := Database{}
+	err := d.Delete("x", "11")
+	if err == nil {
+		t.Fatalf("Expected error 419, got success")
+	}
+}
+
+func TestDeleteWithNotOK(t *testing.T) {
+	hres := `{"ok": false, "error": "Broken", "reason": "Because"}`
+	defer uninstallFakeHttp(installFakeHttp(fakeHttp{
+		StatusCode: 200,
+		Body:       ioutil.NopCloser(strings.NewReader(hres)),
+	}))
+	d := Database{}
+	err := d.Delete("x", "11")
+	if err == nil {
+		t.Fatalf("Expected error")
+	}
+}
+
+func TestDeleteWithOK(t *testing.T) {
+	hres := `{"ok": true}`
+	defer uninstallFakeHttp(installFakeHttp(fakeHttp{
+		StatusCode: 200,
+		Body:       ioutil.NopCloser(strings.NewReader(hres)),
+	}))
+	d := Database{}
+	err := d.Delete("x", "11")
+	if err != nil {
+		t.Fatalf("Expected success, got %v", err)
+	}
+}
