@@ -789,6 +789,36 @@ func TestInsertWith(t *testing.T) {
 	}
 }
 
+func TestInsertWithBadInput(t *testing.T) {
+	d := Database{}
+	id, rev, err := d.InsertWith(make(chan bool), "x")
+	if err == nil {
+		t.Errorf("Unexpected success: %v/%v", id, rev)
+	}
+}
+
+// This is confusing, but there's Insert as insertWith and lower
+// insertWith and public InsertWith
+func TestInsertWith2(t *testing.T) {
+	hres := `{"ok": true, "id": "one", "rev": "11"}`
+	defer uninstallFakeHttp(installFakeHttp(fakeHttp{
+		StatusCode: 200,
+		Body:       ioutil.NopCloser(strings.NewReader(hres)),
+	}))
+
+	d := Database{}
+	id, rev, err := d.InsertWith(map[string]interface{}{}, "one")
+	if err != nil {
+		t.Fatalf("Errored: %v", err)
+	}
+	if id != "one" {
+		t.Errorf(`Expected id="one", got %q`, id)
+	}
+	if rev != "11" {
+		t.Errorf(`Expected rev="11", got %q`, id)
+	}
+}
+
 func TestInsertWithRev(t *testing.T) {
 	hres := `{"ok": true, "id": "one", "rev": "11"}`
 	defer uninstallFakeHttp(installFakeHttp(fakeHttp{
