@@ -8,9 +8,9 @@ import (
 )
 
 type keyedViewResponse struct {
-	Total_rows uint64
-	Offset     uint64
-	Rows       []Row
+	TotalRows uint64 `json:"total_rows"`
+	Offset    uint64
+	Rows      []Row
 }
 
 // Return array of document ids as returned by the given view/options combo.

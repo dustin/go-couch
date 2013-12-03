@@ -115,3 +115,21 @@ func TestQuerySuccess(t *testing.T) {
 		t.Fatalf("Expected v, got %q", ob["k"])
 	}
 }
+
+func TestQueryIDsSuccess(t *testing.T) {
+	hres := `{"rows": [{"id": "one"}, {}, {"id": "three"}]}`
+	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+		StatusCode: 200,
+		Body:       ioutil.NopCloser(strings.NewReader(hres)),
+	})))
+
+	d := Database{Host: "localhost", Port: "5984"}
+	ids, err := d.QueryIds("aview", map[string]interface{}{})
+	if err != nil {
+		t.Errorf("Failed to execute a view: %v", err)
+	}
+	if len(ids) != 2 || ids[0] != "one" || ids[1] != "three" {
+		t.Fatalf("Didn't get expected IDs: %v", ids)
+	}
+
+}
