@@ -336,18 +336,18 @@ func (p Database) Edit(d interface{}) (string, error) {
 // d should not contain "_id" or "_rev" tagged fields. If it does, they will
 // be overwritten with the passed values.
 func (p Database) EditWith(d interface{}, id, rev string) (string, error) {
-	if id == "" || rev == "" {
-		return "", errors.New("must specify both id and rev")
+	if id == "" {
+		return "", errNoID
+	}
+	if rev == "" {
+		return "", errNoRev
 	}
 	jsonBuf, err := json.Marshal(d)
 	if err != nil {
 		return "", err
 	}
 	m := map[string]interface{}{}
-	err = json.Unmarshal(jsonBuf, &m)
-	if err != nil {
-		return "", err
-	}
+	must(json.Unmarshal(jsonBuf, &m))
 	m["_id"] = id
 	m["_rev"] = rev
 	return p.Edit(m)

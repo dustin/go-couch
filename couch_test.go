@@ -1063,3 +1063,43 @@ func TestEditHTTPSuccess(t *testing.T) {
 		t.Fatalf(`Expected rev="85", got %q`, id)
 	}
 }
+
+func TestEditWithNoID(t *testing.T) {
+	d := Database{}
+	id, err := d.EditWith(map[string]interface{}{}, "", "r")
+	if err != errNoID {
+		t.Fatalf("Expected no ID err on bad input, got %v/%v", err, id)
+	}
+}
+
+func TestEditWithNoRev(t *testing.T) {
+	d := Database{}
+	id, err := d.EditWith(map[string]interface{}{}, "x", "")
+	if err != errNoRev {
+		t.Fatalf("Expected no rev error on bad input, got %v/%v", err, id)
+	}
+}
+
+func TestEditWithBadInput(t *testing.T) {
+	d := Database{}
+	id, err := d.EditWith(make(chan bool), "a", "3")
+	if err == nil {
+		t.Fatalf("Expected error with bad input, got %v", id)
+	}
+}
+
+func TestEditWithHTTPSuccess(t *testing.T) {
+	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+		StatusCode: 200,
+		Body:       ioutil.NopCloser(strings.NewReader(`{"rev": "85"}`)),
+	})))
+
+	d := Database{}
+	id, err := d.EditWith(map[string]interface{}{}, "x", "84")
+	if err != nil {
+		t.Fatalf("Expected success, got %v", err)
+	}
+	if id != "85" {
+		t.Fatalf(`Expected rev="85", got %q`, id)
+	}
+}
