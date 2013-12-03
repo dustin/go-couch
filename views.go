@@ -7,7 +7,7 @@ import (
 	"net/url"
 )
 
-type keyed_view_response struct {
+type keyedViewResponse struct {
 	Total_rows uint64
 	Offset     uint64
 	Rows       []Row
@@ -17,26 +17,26 @@ type keyed_view_response struct {
 // view should be eg. "_design/my_foo/_view/my_bar"
 // options should be eg. { "limit": 10, "key": "baz" }
 func (p Database) QueryIds(view string, options map[string]interface{}) ([]string, error) {
-	kvr := new(keyed_view_response)
+	kvr := keyedViewResponse{}
 
-	if err := p.Query(view, options, kvr); err != nil {
-		return make([]string, 0), err
+	if err := p.Query(view, options, &kvr); err != nil {
+		return nil, err
 	}
 
-	ids := make([]string, len(kvr.Rows))
-	i := 0
+	var ids []string
 	for _, row := range kvr.Rows {
 		if row.Id != nil {
-			ids[i] = *row.Id
-			i++
+			ids = append(ids, *row.Id)
 		}
 	}
-	return ids[:i], nil
+	return ids, nil
 }
+
+var errEmptyView = errors.New("empty view")
 
 func (p Database) Query(view string, options map[string]interface{}, results interface{}) error {
 	if view == "" {
-		return errors.New("empty view")
+		return errEmptyView
 	}
 	parameters := ""
 	for k, v := range options {
