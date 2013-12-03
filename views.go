@@ -34,28 +34,56 @@ func (p Database) QueryIds(view string, options map[string]interface{}) ([]strin
 
 var errEmptyView = errors.New("empty view")
 
+// DocId is a string type that isn't escaped in a view param
+type DocId string
+
+func qParam(k, v string) string {
+	format := `"%s"`
+	switch k {
+	case "startkey_docid", "stale":
+		format = "%s"
+	}
+	return fmt.Sprintf(format, v)
+}
+
+// Build a URL for a view with the given ddoc, view name, and
+// parameters.
+func (p Database) ViewURL(view string, params map[string]interface{}) (string, error) {
+	values := url.Values{}
+	for k, v := range params {
+		switch t := v.(type) {
+		case DocId:
+			values[k] = []string{string(t)}
+		case string:
+			values[k] = []string{qParam(k, t)}
+		case int:
+			values[k] = []string{fmt.Sprintf(`%d`, t)}
+		case bool:
+			values[k] = []string{fmt.Sprintf(`%v`, t)}
+		default:
+			b, err := json.Marshal(v)
+			if err != nil {
+				return "", fmt.Errorf("unsupported value-type %T in Query, "+
+					"json encoder said %v", t, err)
+			}
+			values[k] = []string{fmt.Sprintf(`%v`, string(b))}
+		}
+	}
+
+	u, err := url.Parse(p.DBURL() + "/" + view)
+	must(err)
+	u.RawQuery = values.Encode()
+
+	return u.String(), nil
+}
+
 func (p Database) Query(view string, options map[string]interface{}, results interface{}) error {
 	if view == "" {
 		return errEmptyView
 	}
-	parameters := ""
-	for k, v := range options {
-		switch t := v.(type) {
-		case string:
-			parameters += fmt.Sprintf(`%s="%s"&`, k, url.QueryEscape(t))
-		case int:
-			parameters += fmt.Sprintf(`%s=%d&`, k, t)
-		case bool:
-			parameters += fmt.Sprintf(`%s=%v&`, k, t)
-		default:
-			b, err := json.Marshal(v)
-			if err != nil {
-				panic(fmt.Sprintf("unsupported value-type %T in Query, json encoder said %v", t, err))
-			}
-			parameters += fmt.Sprintf(`%s=%v&`, k, string(b))
-		}
+	fullUrl, err := p.ViewURL(view, options)
+	if err != nil {
+		return err
 	}
-	full_url := fmt.Sprintf("%s/%s?%s", p.DBURL(), view, parameters)
-
-	return unmarshalURL(full_url, results)
+	return unmarshalURL(fullUrl, results)
 }
