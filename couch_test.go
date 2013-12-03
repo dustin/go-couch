@@ -1103,3 +1103,84 @@ func TestEditWithHTTPSuccess(t *testing.T) {
 		t.Fatalf(`Expected rev="85", got %q`, id)
 	}
 }
+
+func TestConnectBadURL(t *testing.T) {
+	d, err := Connect("http://%")
+	if err == nil {
+		t.Fatalf("Expected error connecting with bad URL, got %v", d)
+	}
+}
+
+func TestConnectNotRunning(t *testing.T) {
+	defer uninstallFakeHttp(installFakeHttp(&fakeHttp{}))
+	db, err := Connect("http://localhost:5984/")
+	if err != errNotRunning {
+		t.Fatalf("Expected error with bad connection, got %v/%v", db, err)
+	}
+}
+
+func TestConnectNoDB(t *testing.T) {
+	defer uninstallFakeHttp(installFakeHttp(&fakeHttp{
+		responses: []http.Response{
+			http.Response{
+				StatusCode: 200,
+				Body:       ioutil.NopCloser(strings.NewReader(`["db"]`)),
+			},
+			http.Response{
+				StatusCode: 200,
+				Body:       ioutil.NopCloser(strings.NewReader(`[]`)),
+			},
+		},
+	}))
+
+	db, err := Connect("http://localhost:5984/db")
+	if err == nil {
+		t.Fatalf("Expected error with no db, got %v", db)
+	}
+}
+
+func TestConnectSuccess(t *testing.T) {
+	defer uninstallFakeHttp(installFakeHttp(&fakeHttp{
+		responses: []http.Response{
+			http.Response{
+				StatusCode: 200,
+				Body:       ioutil.NopCloser(strings.NewReader(`["db"]`)),
+			},
+			http.Response{
+				StatusCode: 200,
+				Body:       ioutil.NopCloser(strings.NewReader(`{"db_name": "db"}`)),
+			},
+		},
+	}))
+
+	db, err := Connect("http://localhost:5984/db")
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if db.Port != "5984" {
+		t.Fatalf("Expected port 5984, got %q", db.Port)
+	}
+}
+
+func TestConnectSuccessDefaultPort(t *testing.T) {
+	defer uninstallFakeHttp(installFakeHttp(&fakeHttp{
+		responses: []http.Response{
+			http.Response{
+				StatusCode: 200,
+				Body:       ioutil.NopCloser(strings.NewReader(`["db"]`)),
+			},
+			http.Response{
+				StatusCode: 200,
+				Body:       ioutil.NopCloser(strings.NewReader(`{"db_name": "db"}`)),
+			},
+		},
+	}))
+
+	db, err := Connect("http://localhost/db")
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if db.Port != "80" {
+		t.Fatalf("Expected port 80, got %q", db.Port)
+	}
+}
