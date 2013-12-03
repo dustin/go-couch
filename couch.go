@@ -307,6 +307,8 @@ func (p Database) insertWith(jsonBuf []byte, id string) (string, string, error) 
 	return ir.Id, ir.Rev, nil
 }
 
+var errNoRev = errors.New("rev not specified in interface (try InsertWith)")
+
 // Edits the given document, returning the new revision.
 // d must contain "_id" and "_rev" tagged fields.
 func (p Database) Edit(d interface{}) (string, error) {
@@ -314,18 +316,15 @@ func (p Database) Edit(d interface{}) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	id_rev := new(IdAndRev)
-	err = json.Unmarshal(jsonBuf, id_rev)
-	if err != nil {
-		return "", err
+	idRev := IdAndRev{}
+	must(json.Unmarshal(jsonBuf, &idRev))
+	if idRev.Id == "" {
+		return "", errNoID
 	}
-	if id_rev.Id == "" {
-		return "", errors.New("id not specified in interface")
+	if idRev.Rev == "" {
+		return "", errNoRev
 	}
-	if id_rev.Rev == "" {
-		return "", errors.New("rev not specified in interface (try InsertWith)")
-	}
-	u := fmt.Sprintf("%s/%s", p.DBURL(), url.QueryEscape(id_rev.Id))
+	u := fmt.Sprintf("%s/%s", p.DBURL(), url.QueryEscape(idRev.Id))
 	ir := Response{}
 	if _, err = interact("PUT", u, defaultHdrs, jsonBuf, &ir); err != nil {
 		return "", err

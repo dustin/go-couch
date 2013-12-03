@@ -1010,3 +1010,56 @@ func TestNewDBCreateSuccess(t *testing.T) {
 		t.Fatalf("Expected succcess, got %v", err)
 	}
 }
+
+func TestEditBadOb(t *testing.T) {
+	d := Database{}
+	id, err := d.Edit(make(chan bool))
+	if err == nil {
+		t.Fatalf("Expected error on bad input, got %v", id)
+	}
+}
+
+func TestEditNoID(t *testing.T) {
+	d := Database{}
+	id, err := d.Edit(map[string]interface{}{})
+	if err != errNoID {
+		t.Fatalf("Expected no ID err on bad input, got %v/%v", err, id)
+	}
+}
+
+func TestEditNoRev(t *testing.T) {
+	d := Database{}
+	id, err := d.Edit(map[string]interface{}{"_id": "theid"})
+	if err != errNoRev {
+		t.Fatalf("Expected no rev error on bad input, got %v/%v", err, id)
+	}
+}
+
+func TestEditHTTPFail(t *testing.T) {
+	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+		StatusCode: 500,
+		Body:       ioutil.NopCloser(strings.NewReader(``)),
+	})))
+
+	d := Database{}
+	id, err := d.Edit(map[string]interface{}{"_id": "theid", "_rev": "84"})
+	if err == nil {
+		t.Fatalf("Expected http error, got %v", id)
+	}
+}
+
+func TestEditHTTPSuccess(t *testing.T) {
+	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+		StatusCode: 200,
+		Body:       ioutil.NopCloser(strings.NewReader(`{"rev": "85"}`)),
+	})))
+
+	d := Database{}
+	id, err := d.Edit(map[string]interface{}{"_id": "theid", "_rev": "84"})
+	if err != nil {
+		t.Fatalf("Expected success, got %v", err)
+	}
+	if id != "85" {
+		t.Fatalf(`Expected rev="85", got %q`, id)
+	}
+}
