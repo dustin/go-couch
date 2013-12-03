@@ -1,7 +1,10 @@
 package couch
 
 import (
+	"io/ioutil"
+	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 )
 
@@ -93,5 +96,22 @@ func TestQueryBadViewParam(t *testing.T) {
 	}, &ob)
 	if err == nil {
 		t.Errorf("Failed to build a view with a bad param, got %v", ob)
+	}
+}
+
+func TestQuerySuccess(t *testing.T) {
+	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+		StatusCode: 200,
+		Body:       ioutil.NopCloser(strings.NewReader(`{"k": "v"}`)),
+	})))
+
+	d := Database{Host: "localhost", Port: "5984"}
+	ob := map[string]interface{}{}
+	err := d.Query("aview", map[string]interface{}{}, &ob)
+	if err != nil {
+		t.Errorf("Failed to execute a view: %v", err)
+	}
+	if ob["k"] != "v" {
+		t.Fatalf("Expected v, got %q", ob["k"])
 	}
 }
