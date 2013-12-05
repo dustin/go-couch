@@ -137,19 +137,11 @@ func mockDialer(m *mockConn) func(string, string) (net.Conn, error) {
 	}
 }
 
-func setChangesDialer(to func(string, string) (net.Conn, error)) func(string, string) (net.Conn, error) {
-	prev := changesDialer
-	changesDialer = to
-	return prev
-}
-
 func TestChangesTwice(t *testing.T) {
 	mock := &mockConn{[]byte(`HTTP/1.0 200 OK
 
 `), false, true}
-	changesFailDelay = 5
-	defer setChangesDialer(setChangesDialer(mockDialer(mock)))
-	d := Database{}
+	d := Database{changesDialer: mockDialer(mock), changesFailDelay: 5}
 	err := d.Changes(func(io.Reader) int64 { return -1 }, map[string]interface{}{})
 	t.Logf("Error: %v", err)
 }
@@ -158,9 +150,7 @@ func TestChangesWithOptions(t *testing.T) {
 	mock := &mockConn{[]byte(`HTTP/1.0 200 OK
 
 `), false, false}
-	changesFailDelay = 5
-	defer setChangesDialer(setChangesDialer(mockDialer(mock)))
-	d := Database{}
+	d := Database{changesDialer: mockDialer(mock), changesFailDelay: 5}
 	err := d.Changes(func(io.Reader) int64 { return -1 },
 		map[string]interface{}{
 			"since":     858245,
@@ -174,9 +164,7 @@ func TestChangesWithNegativeHB(t *testing.T) {
 	mock := &mockConn{[]byte(`HTTP/1.0 200 OK
 
 `), false, false}
-	changesFailDelay = 5
-	defer setChangesDialer(setChangesDialer(mockDialer(mock)))
-	d := Database{}
+	d := Database{changesDialer: mockDialer(mock), changesFailDelay: 5}
 	err := d.Changes(func(io.Reader) int64 { return -1 },
 		map[string]interface{}{
 			"since":     858245,

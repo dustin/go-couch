@@ -355,9 +355,11 @@ func TestURLs(t *testing.T) {
 		db  Database
 		exp string
 	}{
-		{Database{"locohost", "5984", "dbx", nil},
+		{Database{"locohost", "5984", "dbx", nil,
+			nil, defaultChangeDelay},
 			"http://locohost:5984/dbx"},
-		{Database{"locohost", "5984", "dbx", url.UserPassword("a", "b")},
+		{Database{"locohost", "5984", "dbx", url.UserPassword("a", "b"),
+			nil, defaultChangeDelay},
 			"http://a:b@locohost:5984/dbx"},
 	}
 	for _, test := range tests {

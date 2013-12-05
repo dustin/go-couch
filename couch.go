@@ -6,9 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 var defaultHdrs = map[string][]string{}
@@ -107,6 +109,9 @@ type Database struct {
 	Port     string
 	Name     string
 	authinfo *url.Userinfo
+
+	changesDialer    func(string, string) (net.Conn, error)
+	changesFailDelay time.Duration
 }
 
 func (p Database) BaseURL() string {
@@ -180,7 +185,7 @@ func Connect(dburl string) (Database, error) {
 		port = hp[1]
 	}
 
-	db := Database{host, port, u.Path[1:], u.User}
+	db := Database{host, port, u.Path[1:], u.User, net.Dial, defaultChangeDelay}
 	if !db.Running() {
 		return Database{}, errNotRunning
 	}
@@ -192,7 +197,7 @@ func Connect(dburl string) (Database, error) {
 }
 
 func NewDatabase(host, port, name string) (Database, error) {
-	db := Database{host, port, name, nil}
+	db := Database{host, port, name, nil, net.Dial, defaultChangeDelay}
 	if !db.Running() {
 		return db, errNotRunning
 	}
