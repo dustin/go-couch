@@ -81,9 +81,9 @@ func TestI64Opt(t *testing.T) {
 }
 
 type mockConn struct {
-	stuff       []byte
-	respEnabled bool
-	fail        bool
+	stuff   []byte
+	waiting chan bool
+	fail    bool
 }
 
 func (m *mockConn) Read(b []byte) (int, error) {
@@ -91,9 +91,7 @@ func (m *mockConn) Read(b []byte) (int, error) {
 		m.fail = false
 		return 0, io.EOF
 	}
-	if !m.respEnabled {
-		return 0, nil
-	}
+	<-m.waiting
 	if len(m.stuff) == 0 {
 		return 0, io.EOF
 	}
@@ -103,7 +101,11 @@ func (m *mockConn) Read(b []byte) (int, error) {
 }
 
 func (m *mockConn) Write(b []byte) (n int, err error) {
-	m.respEnabled = true
+	select {
+	case <-m.waiting:
+	default:
+		close(m.waiting)
+	}
 	return len(b), err
 }
 
@@ -137,20 +139,21 @@ func mockDialer(m *mockConn) func(string, string) (net.Conn, error) {
 	}
 }
 
-func TestChangesTwice(t *testing.T) {
+func makeEmptyMock() func(string, string) (net.Conn, error) {
 	mock := &mockConn{[]byte(`HTTP/1.0 200 OK
 
-`), false, true}
-	d := Database{changesDialer: mockDialer(mock), changesFailDelay: 5}
+`), make(chan bool), true}
+	return mockDialer(mock)
+}
+
+func TestChangesTwice(t *testing.T) {
+	d := Database{changesDialer: makeEmptyMock(), changesFailDelay: 5}
 	err := d.Changes(func(io.Reader) int64 { return -1 }, map[string]interface{}{})
 	t.Logf("Error: %v", err)
 }
 
 func TestChangesWithOptions(t *testing.T) {
-	mock := &mockConn{[]byte(`HTTP/1.0 200 OK
-
-`), false, false}
-	d := Database{changesDialer: mockDialer(mock), changesFailDelay: 5}
+	d := Database{changesDialer: makeEmptyMock(), changesFailDelay: 5}
 	err := d.Changes(func(io.Reader) int64 { return -1 },
 		map[string]interface{}{
 			"since":     858245,
@@ -161,10 +164,7 @@ func TestChangesWithOptions(t *testing.T) {
 }
 
 func TestChangesWithNegativeHB(t *testing.T) {
-	mock := &mockConn{[]byte(`HTTP/1.0 200 OK
-
-`), false, false}
-	d := Database{changesDialer: mockDialer(mock), changesFailDelay: 5}
+	d := Database{changesDialer: makeEmptyMock(), changesFailDelay: 5}
 	err := d.Changes(func(io.Reader) int64 { return -1 },
 		map[string]interface{}{
 			"since":     858245,
