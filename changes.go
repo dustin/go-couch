@@ -63,6 +63,9 @@ func i64defopt(opts map[string]interface{}, k string, def int64) int64 {
 	return rv
 }
 
+var changesDialer = net.Dial
+var changesFailDelay = time.Second
+
 // Feed the changes.
 //
 // The handler receives the body of the stream and is expected to consume
@@ -104,7 +107,7 @@ func (p Database) Changes(handler ChangeHandler,
 			Proxy: http.ProxyFromEnvironment,
 			Dial: func(n, addr string) (net.Conn, error) {
 				var err error
-				conn, err = net.Dial(n, addr)
+				conn, err = changesDialer(n, addr)
 				return conn, err
 			},
 		}}
@@ -120,7 +123,7 @@ func (p Database) Changes(handler ChangeHandler,
 			}()
 		} else {
 			log.Printf("Error in stream: %v", err)
-			time.Sleep(time.Second * 1)
+			time.Sleep(changesFailDelay)
 		}
 	}
 	return nil
