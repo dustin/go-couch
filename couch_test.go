@@ -13,8 +13,8 @@ import (
 	"testing"
 )
 
-func TestHttpError(t *testing.T) {
-	err := HttpError{404, "four oh four"}
+func TestHTTPError(t *testing.T) {
+	err := HTTPError{404, "four oh four"}
 	if err.Error() != "four oh four" {
 		t.Errorf(`Expected "four oh four", got %q`, err.Error())
 	}
@@ -77,7 +77,7 @@ type mocktrip struct {
 
 func (m *mocktrip) RoundTrip(req *http.Request) (*http.Response, error) {
 	if m.expurl != req.URL.String() {
-		return nil, &HttpError{400, "Incorrect url: " + req.URL.String()}
+		return nil, &HTTPError{400, "Incorrect url: " + req.URL.String()}
 	}
 	m.hdrs = req.Header
 	return &http.Response{
@@ -88,7 +88,7 @@ func (m *mocktrip) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 func installClient(c *http.Client) {
-	HttpClient = c
+	HTTPClient = c
 }
 
 func TestUnmarshalURLGolden(t *testing.T) {
@@ -99,13 +99,13 @@ func TestUnmarshalURLGolden(t *testing.T) {
 
 	installClient(&http.Client{Transport: &m})
 
-	idr := IdAndRev{}
+	idr := idAndRev{}
 	err := unmarshalURL(u, &idr)
 	if err != nil {
 		t.Fatalf("Error unmarshaling: %v", err)
 	}
 
-	if idr.Id != "theid" || idr.Rev != "therev" {
+	if idr.ID != "theid" || idr.Rev != "therev" {
 		t.Fatalf("Expected theid/therev, got %v", idr)
 	}
 }
@@ -136,7 +136,7 @@ func TestInteractGolden(t *testing.T) {
 
 	installClient(&http.Client{Transport: &m})
 
-	idr := IdAndRev{}
+	idr := idAndRev{}
 	n, err := interact("POST", u, map[string][]string{"X-What": []string{"a"}},
 		[]byte{'{', '}'}, &idr)
 	if n != 200 || err != nil {
@@ -150,7 +150,7 @@ func TestInteractGolden(t *testing.T) {
 		t.Errorf("Expected custom header, got %q\n%v", m.hdrs.Get("X-What"), m.hdrs)
 	}
 
-	if idr.Id != "theid" || idr.Rev != "therev" {
+	if idr.ID != "theid" || idr.Rev != "therev" {
 		t.Fatalf("Expected theid/therev, got %v", idr)
 	}
 }
@@ -163,7 +163,7 @@ func TestInteractBadResp(t *testing.T) {
 
 	installClient(&http.Client{Transport: &m})
 
-	idr := IdAndRev{}
+	idr := idAndRev{}
 	n, err := interact("POST", u, map[string][]string{}, []byte{'{', '}'}, &idr)
 	if n != 419 || err == nil {
 		t.Fatalf("Expected error 419, got: %v/%v", n, err)
@@ -188,11 +188,11 @@ func TestInteractSchemeError(t *testing.T) {
 	}
 }
 
-type fakeHttp struct {
+type fakeHTTP struct {
 	responses []http.Response
 }
 
-func (f *fakeHttp) RoundTrip(*http.Request) (*http.Response, error) {
+func (f *fakeHTTP) RoundTrip(*http.Request) (*http.Response, error) {
 	if len(f.responses) == 0 {
 		return &http.Response{
 			Status:     "Server Error",
@@ -205,22 +205,22 @@ func (f *fakeHttp) RoundTrip(*http.Request) (*http.Response, error) {
 	return &p, nil
 }
 
-func installFakeHttp(f *fakeHttp) *http.Client {
-	rv := HttpClient
-	HttpClient = &http.Client{Transport: f}
+func installFakeHTTP(f *fakeHTTP) *http.Client {
+	rv := HTTPClient
+	HTTPClient = &http.Client{Transport: f}
 	return rv
 }
 
-func uninstallFakeHttp(h *http.Client) {
-	HttpClient = h
+func uninstallFakeHTTP(h *http.Client) {
+	HTTPClient = h
 }
 
-func oneFake(r http.Response) *fakeHttp {
-	return &fakeHttp{[]http.Response{r}}
+func oneFake(r http.Response) *fakeHTTP {
+	return &fakeHTTP{[]http.Response{r}}
 }
 
 func TestUnmarshalBadReq(t *testing.T) {
-	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+	defer uninstallFakeHTTP(installFakeHTTP(oneFake(http.Response{
 		StatusCode: 404,
 		Status:     "404 four-oh-four",
 		Body:       ioutil.NopCloser(&bytes.Buffer{}),
@@ -235,7 +235,7 @@ func TestUnmarshalBadReq(t *testing.T) {
 }
 
 func TestRunningSuccess(t *testing.T) {
-	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+	defer uninstallFakeHTTP(installFakeHTTP(oneFake(http.Response{
 		StatusCode: 200,
 		Body:       ioutil.NopCloser(strings.NewReader(`["adb"]`)),
 	})))
@@ -246,7 +246,7 @@ func TestRunningSuccess(t *testing.T) {
 }
 
 func TestRunningEmpty(t *testing.T) {
-	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+	defer uninstallFakeHTTP(installFakeHTTP(oneFake(http.Response{
 		StatusCode: 200,
 		Body:       ioutil.NopCloser(strings.NewReader(`[]`)),
 	})))
@@ -257,7 +257,7 @@ func TestRunningEmpty(t *testing.T) {
 }
 
 func TestDBExists(t *testing.T) {
-	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+	defer uninstallFakeHTTP(installFakeHTTP(oneFake(http.Response{
 		StatusCode: 200,
 		Body:       ioutil.NopCloser(strings.NewReader(`{"db_name": "x"}`)),
 	})))
@@ -266,7 +266,7 @@ func TestDBExists(t *testing.T) {
 		t.Errorf("Expected DB to exist.  Didn't.")
 	}
 
-	installFakeHttp(oneFake(http.Response{
+	installFakeHTTP(oneFake(http.Response{
 		StatusCode: 200,
 		Body:       ioutil.NopCloser(strings.NewReader(`{"db_name": "y"}`)),
 	}))
@@ -274,7 +274,7 @@ func TestDBExists(t *testing.T) {
 		t.Errorf("Expected DB to not exist.  Did.")
 	}
 
-	installFakeHttp(oneFake(http.Response{
+	installFakeHTTP(oneFake(http.Response{
 		StatusCode: 200,
 		Body:       ioutil.NopCloser(strings.NewReader(`{"db_name": "`)),
 	}))
@@ -284,7 +284,7 @@ func TestDBExists(t *testing.T) {
 }
 
 func TestRunningError(t *testing.T) {
-	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+	defer uninstallFakeHTTP(installFakeHTTP(oneFake(http.Response{
 		StatusCode: 200,
 		Body:       ioutil.NopCloser(strings.NewReader(`[`)),
 	})))
@@ -295,7 +295,7 @@ func TestRunningError(t *testing.T) {
 }
 
 func TestSimpleOpFail(t *testing.T) {
-	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+	defer uninstallFakeHTTP(installFakeHTTP(oneFake(http.Response{
 		StatusCode: 500,
 		Status:     "five hundred",
 		Body:       ioutil.NopCloser(strings.NewReader(`{"ok": false}`)),
@@ -307,7 +307,7 @@ func TestSimpleOpFail(t *testing.T) {
 }
 
 func TestSimpleOpNotOK(t *testing.T) {
-	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+	defer uninstallFakeHTTP(installFakeHTTP(oneFake(http.Response{
 		StatusCode: 200,
 		Body:       ioutil.NopCloser(strings.NewReader(`{"ok": false}`)),
 	})))
@@ -318,7 +318,7 @@ func TestSimpleOpNotOK(t *testing.T) {
 }
 
 func TestSimpleOpOK(t *testing.T) {
-	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+	defer uninstallFakeHTTP(installFakeHTTP(oneFake(http.Response{
 		StatusCode: 200,
 		Body:       ioutil.NopCloser(strings.NewReader(`{"ok": true}`)),
 	})))
@@ -329,7 +329,7 @@ func TestSimpleOpOK(t *testing.T) {
 }
 
 func TestCreateDB(t *testing.T) {
-	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+	defer uninstallFakeHTTP(installFakeHTTP(oneFake(http.Response{
 		StatusCode: 200,
 		Body:       ioutil.NopCloser(strings.NewReader(`{"ok": true}`)),
 	})))
@@ -340,7 +340,7 @@ func TestCreateDB(t *testing.T) {
 }
 
 func TestDeleteDB(t *testing.T) {
-	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+	defer uninstallFakeHTTP(installFakeHTTP(oneFake(http.Response{
 		StatusCode: 200,
 		Body:       ioutil.NopCloser(strings.NewReader(`{"ok": true}`)),
 	})))
@@ -385,7 +385,7 @@ func TestMust(t *testing.T) {
 func TestCleanJSON(t *testing.T) {
 	j, id, rev, err := cleanJSON(struct {
 		Key string
-		Id  string `json:"_id"`
+		ID  string `json:"_id"`
 		Rev string `json:"_rev"`
 	}{"aqui", "aid", "arev"})
 	m := map[string]interface{}{}
@@ -523,7 +523,7 @@ func TestCleanJSONError(t *testing.T) {
 
 func TestBulk(t *testing.T) {
 	hres := `[{"ok": true, "id": "d1"},{"ok": true, "id": "d2"}]`
-	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+	defer uninstallFakeHTTP(installFakeHTTP(oneFake(http.Response{
 		StatusCode: 200,
 		Body:       ioutil.NopCloser(strings.NewReader(hres)),
 	})))
@@ -538,8 +538,8 @@ func TestBulk(t *testing.T) {
 	}
 
 	exp := []Response{
-		Response{Ok: true, Id: "d1"},
-		Response{Ok: true, Id: "d2"},
+		Response{Ok: true, ID: "d1"},
+		Response{Ok: true, ID: "d2"},
 	}
 
 	if !reflect.DeepEqual(exp, res) {
@@ -548,7 +548,7 @@ func TestBulk(t *testing.T) {
 }
 
 func TestBulkBadInput(t *testing.T) {
-	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+	defer uninstallFakeHTTP(installFakeHTTP(oneFake(http.Response{
 		StatusCode: -1,
 		Body:       ioutil.NopCloser(&bytes.Buffer{}),
 	})))
@@ -577,7 +577,7 @@ func TestPrivateInsertError(t *testing.T) {
 
 func TestPrivateInsertNotOK(t *testing.T) {
 	hres := `{"ok": false, "error": "Broken", "reason": "Because"}`
-	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+	defer uninstallFakeHTTP(installFakeHTTP(oneFake(http.Response{
 		StatusCode: 200,
 		Body:       ioutil.NopCloser(strings.NewReader(hres)),
 	})))
@@ -590,7 +590,7 @@ func TestPrivateInsertNotOK(t *testing.T) {
 
 func TestPrivateInsertOK(t *testing.T) {
 	hres := `{"ok": true, "id": "one", "rev": "11"}`
-	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+	defer uninstallFakeHTTP(installFakeHTTP(oneFake(http.Response{
 		StatusCode: 200,
 		Body:       ioutil.NopCloser(strings.NewReader(hres)),
 	})))
@@ -625,7 +625,7 @@ func TestPrivateInsertWithError(t *testing.T) {
 
 func TestPrivateInsertWithNotOK(t *testing.T) {
 	hres := `{"ok": false, "error": "Broken", "reason": "Because"}`
-	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+	defer uninstallFakeHTTP(installFakeHTTP(oneFake(http.Response{
 		StatusCode: 200,
 		Body:       ioutil.NopCloser(strings.NewReader(hres)),
 	})))
@@ -638,7 +638,7 @@ func TestPrivateInsertWithNotOK(t *testing.T) {
 
 func TestPrivateInsertWithOK(t *testing.T) {
 	hres := `{"ok": true, "id": "one", "rev": "11"}`
-	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+	defer uninstallFakeHTTP(installFakeHTTP(oneFake(http.Response{
 		StatusCode: 200,
 		Body:       ioutil.NopCloser(strings.NewReader(hres)),
 	})))
@@ -693,7 +693,7 @@ func TestInsertBadOb(t *testing.T) {
 
 func TestInsertNew(t *testing.T) {
 	hres := `{"ok": true, "id": "one", "rev": "11"}`
-	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+	defer uninstallFakeHTTP(installFakeHTTP(oneFake(http.Response{
 		StatusCode: 200,
 		Body:       ioutil.NopCloser(strings.NewReader(hres)),
 	})))
@@ -713,7 +713,7 @@ func TestInsertNew(t *testing.T) {
 
 func TestInsertWith(t *testing.T) {
 	hres := `{"ok": true, "id": "one", "rev": "11"}`
-	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+	defer uninstallFakeHTTP(installFakeHTTP(oneFake(http.Response{
 		StatusCode: 200,
 		Body:       ioutil.NopCloser(strings.NewReader(hres)),
 	})))
@@ -743,7 +743,7 @@ func TestInsertWithBadInput(t *testing.T) {
 // insertWith and public InsertWith
 func TestInsertWith2(t *testing.T) {
 	hres := `{"ok": true, "id": "one", "rev": "11"}`
-	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+	defer uninstallFakeHTTP(installFakeHTTP(oneFake(http.Response{
 		StatusCode: 200,
 		Body:       ioutil.NopCloser(strings.NewReader(hres)),
 	})))
@@ -763,7 +763,7 @@ func TestInsertWith2(t *testing.T) {
 
 func TestInsertWithRev(t *testing.T) {
 	hres := `{"ok": true, "id": "one", "rev": "11"}`
-	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+	defer uninstallFakeHTTP(installFakeHTTP(oneFake(http.Response{
 		StatusCode: 200,
 		Body:       ioutil.NopCloser(strings.NewReader(hres)),
 	})))
@@ -784,7 +784,7 @@ func TestInsertWithRev(t *testing.T) {
 
 func TestDBInfo(t *testing.T) {
 	hres := `{"db_name": "testdb", "doc_count": 38515}`
-	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+	defer uninstallFakeHTTP(installFakeHTTP(oneFake(http.Response{
 		StatusCode: 200,
 		Body:       ioutil.NopCloser(strings.NewReader(hres)),
 	})))
@@ -819,7 +819,7 @@ func TestDeleteError(t *testing.T) {
 
 func TestDeleteNotOK(t *testing.T) {
 	hres := `{"ok": false, "error": "Broken", "reason": "Because"}`
-	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+	defer uninstallFakeHTTP(installFakeHTTP(oneFake(http.Response{
 		StatusCode: 200,
 		Body:       ioutil.NopCloser(strings.NewReader(hres)),
 	})))
@@ -847,7 +847,7 @@ func TestDeleteWithError(t *testing.T) {
 
 func TestDeleteWithNotOK(t *testing.T) {
 	hres := `{"ok": false, "error": "Broken", "reason": "Because"}`
-	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+	defer uninstallFakeHTTP(installFakeHTTP(oneFake(http.Response{
 		StatusCode: 200,
 		Body:       ioutil.NopCloser(strings.NewReader(hres)),
 	})))
@@ -860,7 +860,7 @@ func TestDeleteWithNotOK(t *testing.T) {
 
 func TestDeleteWithOK(t *testing.T) {
 	hres := `{"ok": true}`
-	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+	defer uninstallFakeHTTP(installFakeHTTP(oneFake(http.Response{
 		StatusCode: 200,
 		Body:       ioutil.NopCloser(strings.NewReader(hres)),
 	})))
@@ -872,7 +872,7 @@ func TestDeleteWithOK(t *testing.T) {
 }
 
 func TestNewDBNotRunning(t *testing.T) {
-	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+	defer uninstallFakeHTTP(installFakeHTTP(oneFake(http.Response{
 		StatusCode: 200,
 		Body:       ioutil.NopCloser(strings.NewReader(`[`)),
 	})))
@@ -883,7 +883,7 @@ func TestNewDBNotRunning(t *testing.T) {
 }
 
 func TestNewDBCreateFail(t *testing.T) {
-	defer uninstallFakeHttp(installFakeHttp(&fakeHttp{
+	defer uninstallFakeHTTP(installFakeHTTP(&fakeHTTP{
 		responses: []http.Response{
 			http.Response{
 				StatusCode: 200,
@@ -898,7 +898,7 @@ func TestNewDBCreateFail(t *testing.T) {
 }
 
 func TestNewDBCreateExists(t *testing.T) {
-	defer uninstallFakeHttp(installFakeHttp(&fakeHttp{
+	defer uninstallFakeHTTP(installFakeHTTP(&fakeHTTP{
 		responses: []http.Response{
 			http.Response{
 				StatusCode: 200,
@@ -917,7 +917,7 @@ func TestNewDBCreateExists(t *testing.T) {
 }
 
 func TestNewDBCreateSuccess(t *testing.T) {
-	defer uninstallFakeHttp(installFakeHttp(&fakeHttp{
+	defer uninstallFakeHTTP(installFakeHTTP(&fakeHTTP{
 		responses: []http.Response{
 			http.Response{
 				StatusCode: 200,
@@ -964,7 +964,7 @@ func TestEditNoRev(t *testing.T) {
 }
 
 func TestEditHTTPFail(t *testing.T) {
-	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+	defer uninstallFakeHTTP(installFakeHTTP(oneFake(http.Response{
 		StatusCode: 500,
 		Body:       ioutil.NopCloser(strings.NewReader(``)),
 	})))
@@ -977,7 +977,7 @@ func TestEditHTTPFail(t *testing.T) {
 }
 
 func TestEditHTTPSuccess(t *testing.T) {
-	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+	defer uninstallFakeHTTP(installFakeHTTP(oneFake(http.Response{
 		StatusCode: 200,
 		Body:       ioutil.NopCloser(strings.NewReader(`{"rev": "85"}`)),
 	})))
@@ -1017,7 +1017,7 @@ func TestEditWithBadInput(t *testing.T) {
 }
 
 func TestEditWithHTTPSuccess(t *testing.T) {
-	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+	defer uninstallFakeHTTP(installFakeHTTP(oneFake(http.Response{
 		StatusCode: 200,
 		Body:       ioutil.NopCloser(strings.NewReader(`{"rev": "85"}`)),
 	})))
@@ -1040,7 +1040,7 @@ func TestConnectBadURL(t *testing.T) {
 }
 
 func TestConnectNotRunning(t *testing.T) {
-	defer uninstallFakeHttp(installFakeHttp(&fakeHttp{}))
+	defer uninstallFakeHTTP(installFakeHTTP(&fakeHTTP{}))
 	db, err := Connect("http://localhost:5984/")
 	if err != errNotRunning {
 		t.Fatalf("Expected error with bad connection, got %v/%v", db, err)
@@ -1048,7 +1048,7 @@ func TestConnectNotRunning(t *testing.T) {
 }
 
 func TestConnectNoDB(t *testing.T) {
-	defer uninstallFakeHttp(installFakeHttp(&fakeHttp{
+	defer uninstallFakeHTTP(installFakeHTTP(&fakeHTTP{
 		responses: []http.Response{
 			http.Response{
 				StatusCode: 200,
@@ -1068,7 +1068,7 @@ func TestConnectNoDB(t *testing.T) {
 }
 
 func TestConnectSuccess(t *testing.T) {
-	defer uninstallFakeHttp(installFakeHttp(&fakeHttp{
+	defer uninstallFakeHTTP(installFakeHTTP(&fakeHTTP{
 		responses: []http.Response{
 			http.Response{
 				StatusCode: 200,
@@ -1091,7 +1091,7 @@ func TestConnectSuccess(t *testing.T) {
 }
 
 func TestConnectSuccessDefaultPort(t *testing.T) {
-	defer uninstallFakeHttp(installFakeHttp(&fakeHttp{
+	defer uninstallFakeHTTP(installFakeHTTP(&fakeHTTP{
 		responses: []http.Response{
 			http.Response{
 				StatusCode: 200,

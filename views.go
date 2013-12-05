@@ -7,13 +7,19 @@ import (
 	"net/url"
 )
 
+// Row represents a single row in a view response
+type Row struct {
+	ID  *string
+	Key *string
+}
+
 type keyedViewResponse struct {
 	TotalRows uint64 `json:"total_rows"`
 	Offset    uint64
 	Rows      []Row
 }
 
-// Return array of document ids as returned by the given view/options combo.
+// QueryIds returns a slice of document ids as returned by the given view/options combo.
 // view should be eg. "_design/my_foo/_view/my_bar"
 // options should be eg. { "limit": 10, "key": "baz" }
 func (p Database) QueryIds(view string, options map[string]interface{}) ([]string, error) {
@@ -25,8 +31,8 @@ func (p Database) QueryIds(view string, options map[string]interface{}) ([]strin
 
 	var ids []string
 	for _, row := range kvr.Rows {
-		if row.Id != nil {
-			ids = append(ids, *row.Id)
+		if row.ID != nil {
+			ids = append(ids, *row.ID)
 		}
 	}
 	return ids, nil
@@ -34,8 +40,8 @@ func (p Database) QueryIds(view string, options map[string]interface{}) ([]strin
 
 var errEmptyView = errors.New("empty view")
 
-// DocId is a string type that isn't escaped in a view param
-type DocId string
+// DocID is a string type that isn't escaped in a view param
+type DocID string
 
 func qParam(k, v string) string {
 	format := `"%s"`
@@ -46,13 +52,13 @@ func qParam(k, v string) string {
 	return fmt.Sprintf(format, v)
 }
 
-// Build a URL for a view with the given ddoc, view name, and
+// ViewURL builds a URL for a view with the given ddoc, view name, and
 // parameters.
 func (p Database) ViewURL(view string, params map[string]interface{}) (string, error) {
 	values := url.Values{}
 	for k, v := range params {
 		switch t := v.(type) {
-		case DocId:
+		case DocID:
 			values[k] = []string{string(t)}
 		case string:
 			values[k] = []string{qParam(k, t)}
@@ -77,13 +83,14 @@ func (p Database) ViewURL(view string, params map[string]interface{}) (string, e
 	return u.String(), nil
 }
 
+// Query executes and unmarshals a view request.
 func (p Database) Query(view string, options map[string]interface{}, results interface{}) error {
 	if view == "" {
 		return errEmptyView
 	}
-	fullUrl, err := p.ViewURL(view, options)
+	fullURL, err := p.ViewURL(view, options)
 	if err != nil {
 		return err
 	}
-	return unmarshalURL(fullUrl, results)
+	return unmarshalURL(fullURL, results)
 }

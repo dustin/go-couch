@@ -40,7 +40,7 @@ func TestViewURL(t *testing.T) {
 	}{
 		{map[string]interface{}{"i": 1, "b": true, "s": "ess"},
 			map[string]string{"i": "1", "b": "true", "s": `"ess"`}},
-		{map[string]interface{}{"unk": DocId("le"), "startkey_docid": "ess"},
+		{map[string]interface{}{"unk": DocID("le"), "startkey_docid": "ess"},
 			map[string]string{"unk": "le", "startkey_docid": "ess"}},
 		{map[string]interface{}{"stale": "update_after"},
 			map[string]string{"stale": "update_after"}},
@@ -100,7 +100,7 @@ func TestQueryBadViewParam(t *testing.T) {
 }
 
 func TestQuerySuccess(t *testing.T) {
-	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+	defer uninstallFakeHTTP(installFakeHTTP(oneFake(http.Response{
 		StatusCode: 200,
 		Body:       ioutil.NopCloser(strings.NewReader(`{"k": "v"}`)),
 	})))
@@ -118,7 +118,7 @@ func TestQuerySuccess(t *testing.T) {
 
 func TestQueryIDsSuccess(t *testing.T) {
 	hres := `{"rows": [{"id": "one"}, {}, {"id": "three"}]}`
-	defer uninstallFakeHttp(installFakeHttp(oneFake(http.Response{
+	defer uninstallFakeHTTP(installFakeHTTP(oneFake(http.Response{
 		StatusCode: 200,
 		Body:       ioutil.NopCloser(strings.NewReader(hres)),
 	})))

@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-// Handle the stream of changes coming from a Changes thing.
+// A ChangeHandler handles the stream of changes coming from Changes.
 //
 // The handler returns the next sequence number when the stream should
 // be resumed, otherwise -1 to indicate the changes feed should stop.
@@ -65,7 +65,7 @@ func i64defopt(opts map[string]interface{}, k string, def int64) int64 {
 	return rv
 }
 
-// Feed the changes.
+// Changes feeds a ChangeHandler a CouchDB changes feed.
 //
 // The handler receives the body of the stream and is expected to consume
 // the contents.
@@ -96,7 +96,7 @@ func (p Database) Changes(handler ChangeHandler,
 			params.Del("heartbeat")
 		}
 
-		full_url := fmt.Sprintf("%s/_changes?%s", p.DBURL(),
+		fullURL := fmt.Sprintf("%s/_changes?%s", p.DBURL(),
 			params.Encode())
 
 		var conn net.Conn
@@ -111,7 +111,7 @@ func (p Database) Changes(handler ChangeHandler,
 			},
 		}}
 
-		resp, err := client.Get(full_url)
+		resp, err := client.Get(fullURL)
 		if err == nil {
 			func() {
 				defer resp.Body.Close()
