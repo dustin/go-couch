@@ -11,6 +11,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/dustin/httputil"
 )
 
 var defaultHdrs = map[string][]string{}
@@ -19,16 +21,6 @@ var defaultHdrs = map[string][]string{}
 //
 // Defaults to http.DefaultClient
 var HTTPClient = http.DefaultClient
-
-// HTTPError represents errors returned from unsuccessful HTTP requests.
-type HTTPError struct {
-	Status int
-	Msg    string
-}
-
-func (e *HTTPError) Error() string {
-	return e.Msg
-}
 
 func createReq(u string) (*http.Request, error) {
 	req, err := http.NewRequest("GET", u, nil)
@@ -57,7 +49,7 @@ func unmarshalURL(u string, results interface{}) error {
 	defer r.Body.Close()
 
 	if r.StatusCode != 200 {
-		return &HTTPError{r.StatusCode, r.Status}
+		return httputil.HTTPError(r)
 	}
 
 	return json.NewDecoder(r.Body).Decode(results)
@@ -99,7 +91,7 @@ func interact(method, u string, headers map[string][]string, in []byte, out inte
 	defer res.Body.Close()
 
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		return res.StatusCode, &HTTPError{res.StatusCode, res.Status}
+		return res.StatusCode, httputil.HTTPError(res)
 	}
 	return res.StatusCode, json.NewDecoder(res.Body).Decode(out)
 }

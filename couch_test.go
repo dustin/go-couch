@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -12,13 +13,6 @@ import (
 	"strings"
 	"testing"
 )
-
-func TestHTTPError(t *testing.T) {
-	err := HTTPError{404, "four oh four"}
-	if err.Error() != "four oh four" {
-		t.Errorf(`Expected "four oh four", got %q`, err.Error())
-	}
-}
 
 func tGetCreds(r *http.Request) (string, string) {
 	ah := r.Header.Get("Authorization")
@@ -77,7 +71,7 @@ type mocktrip struct {
 
 func (m *mocktrip) RoundTrip(req *http.Request) (*http.Response, error) {
 	if m.expurl != req.URL.String() {
-		return nil, &HTTPError{400, "Incorrect url: " + req.URL.String()}
+		return nil, errors.New("Incorrect url: " + req.URL.String())
 	}
 	m.hdrs = req.Header
 	return &http.Response{
@@ -301,7 +295,8 @@ func TestSimpleOpFail(t *testing.T) {
 		Body:       ioutil.NopCloser(strings.NewReader(`{"ok": false}`)),
 	})))
 	d := Database{}
-	if err := d.simpleOp("PUT", "/x", io.EOF); err.Error() != "five hundred" {
+	err := d.simpleOp("PUT", "/x", io.EOF)
+	if !strings.Contains(err.Error(), "five hundred") {
 		t.Fatalf("Expected error, got %v", err)
 	}
 }
