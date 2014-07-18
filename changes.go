@@ -1,6 +1,7 @@
 package couch
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -19,6 +20,22 @@ import (
 // The handler may return at any time to restart the stream from the
 // sequence number in indicated in its return value.
 type ChangeHandler func(r io.Reader) int64
+
+type ChangedRev struct {
+	Revision string `json:"rev"`
+}
+
+type Change struct {
+	Sequence    interface{}  `json:"seq"`
+	Id          string       `json:"id"`
+	ChangedRevs []ChangedRev `json:"changes"`
+	Deleted     bool         `json:"deleted"`
+}
+
+type Changes struct {
+	Results      []Change    `json:"results"`
+	LastSequence interface{} `json:"last_seq"`
+}
 
 const defaultChangeDelay = time.Second
 
@@ -63,6 +80,14 @@ func i64defopt(opts map[string]interface{}, k string, def int64) int64 {
 	}
 
 	return rv
+}
+
+func ReadAllChanges(reader io.Reader) (Changes, error) {
+	changes := Changes{}
+	decoder := json.NewDecoder(reader)
+	err := decoder.Decode(&changes)
+	return changes, err
+
 }
 
 // Changes feeds a ChangeHandler a CouchDB changes feed.
