@@ -122,9 +122,14 @@ func (p Database) DBURL() string {
 
 // Running returns true if CouchDB is running (ignores Database.Name)
 func (p Database) Running() bool {
-	dbs := []string{}
-	u := fmt.Sprintf("%s/%s", p.BaseURL(), "_all_dbs")
-	return unmarshalURL(u, &dbs) == nil && len(dbs) > 0
+	var welcomeJson map[string]interface{}
+	u := fmt.Sprintf("%s", p.BaseURL())
+	err := unmarshalURL(u, &welcomeJson)
+	if err != nil {
+		return false
+	}
+	_, ok := welcomeJson["version"]
+	return ok
 }
 
 type databaseInfo struct {
