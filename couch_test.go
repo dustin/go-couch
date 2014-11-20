@@ -346,15 +346,16 @@ func TestDeleteDB(t *testing.T) {
 }
 
 func TestURLs(t *testing.T) {
+	h := map[string][]string{}
 	tests := []struct {
 		db  Database
 		exp string
 	}{
 		{Database{"locohost", "5984", "dbx", nil,
-			nil, defaultChangeDelay},
+			h, nil, defaultChangeDelay},
 			"http://locohost:5984/dbx"},
 		{Database{"locohost", "5984", "dbx", url.UserPassword("a", "b"),
-			nil, defaultChangeDelay},
+			h, nil, defaultChangeDelay},
 			"http://a:b@locohost:5984/dbx"},
 	}
 	for _, test := range tests {
