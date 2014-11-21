@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -45,6 +47,7 @@ func unmarshalURL(u string, results interface{}) error {
 		return err
 	}
 	defer r.Body.Close()
+	defer io.Copy(ioutil.Discard, r.Body)
 
 	if r.StatusCode != 200 {
 		return httputil.HTTPError(r)
@@ -87,6 +90,7 @@ func interact(method, u string, headers map[string][]string, in []byte, out inte
 		return 0, err
 	}
 	defer res.Body.Close()
+	defer io.Copy(ioutil.Discard, res.Body)
 
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
 		return res.StatusCode, httputil.HTTPError(res)
