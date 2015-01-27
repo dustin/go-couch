@@ -231,7 +231,7 @@ func TestUnmarshalBadReq(t *testing.T) {
 func TestRunningSuccess(t *testing.T) {
 	defer uninstallFakeHTTP(installFakeHTTP(oneFake(http.Response{
 		StatusCode: 200,
-		Body:       ioutil.NopCloser(strings.NewReader(`["adb"]`)),
+		Body:       ioutil.NopCloser(strings.NewReader(`{"version":"CouchDB"}`)),
 	})))
 	d := Database{}
 	if !d.Running() {
@@ -242,7 +242,7 @@ func TestRunningSuccess(t *testing.T) {
 func TestRunningEmpty(t *testing.T) {
 	defer uninstallFakeHTTP(installFakeHTTP(oneFake(http.Response{
 		StatusCode: 200,
-		Body:       ioutil.NopCloser(strings.NewReader(`[]`)),
+		Body:       ioutil.NopCloser(strings.NewReader(`{}`)),
 	})))
 	d := Database{}
 	if d.Running() {
@@ -898,7 +898,7 @@ func TestNewDBCreateExists(t *testing.T) {
 		responses: []http.Response{
 			http.Response{
 				StatusCode: 200,
-				Body:       ioutil.NopCloser(strings.NewReader(`["x"]`)),
+				Body:       ioutil.NopCloser(strings.NewReader(`{"version":"CouchDB"}`)),
 			},
 			http.Response{
 				StatusCode: 200,
@@ -917,7 +917,7 @@ func TestNewDBCreateSuccess(t *testing.T) {
 		responses: []http.Response{
 			http.Response{
 				StatusCode: 200,
-				Body:       ioutil.NopCloser(strings.NewReader(`["x"]`)),
+				Body:       ioutil.NopCloser(strings.NewReader(`{"version":"CouchDB"}`)),
 			},
 			http.Response{
 				StatusCode: 404,
@@ -1068,7 +1068,7 @@ func TestConnectSuccess(t *testing.T) {
 		responses: []http.Response{
 			http.Response{
 				StatusCode: 200,
-				Body:       ioutil.NopCloser(strings.NewReader(`["db"]`)),
+				Body:       ioutil.NopCloser(strings.NewReader(`{"version":"CouchDB"}`)),
 			},
 			http.Response{
 				StatusCode: 200,
@@ -1091,7 +1091,7 @@ func TestConnectSuccessDefaultPort(t *testing.T) {
 		responses: []http.Response{
 			http.Response{
 				StatusCode: 200,
-				Body:       ioutil.NopCloser(strings.NewReader(`["db"]`)),
+				Body:       ioutil.NopCloser(strings.NewReader(`{"version":"CouchDB"}`)),
 			},
 			http.Response{
 				StatusCode: 200,

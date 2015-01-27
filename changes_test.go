@@ -148,13 +148,13 @@ func makeEmptyMock() func(string, string) (net.Conn, error) {
 
 func TestChangesTwice(t *testing.T) {
 	d := Database{changesDialer: makeEmptyMock(), changesFailDelay: 5}
-	err := d.Changes(func(io.Reader) int64 { return -1 }, map[string]interface{}{})
+	err := d.Changes(func(io.Reader) interface{} { return nil }, map[string]interface{}{})
 	t.Logf("Error: %v", err)
 }
 
 func TestChangesWithOptions(t *testing.T) {
 	d := Database{changesDialer: makeEmptyMock(), changesFailDelay: 5}
-	err := d.Changes(func(io.Reader) int64 { return -1 },
+	err := d.Changes(func(io.Reader) interface{} { return nil },
 		map[string]interface{}{
 			"since":     858245,
 			"start_key": "x",
@@ -165,7 +165,7 @@ func TestChangesWithOptions(t *testing.T) {
 
 func TestChangesWithNegativeHB(t *testing.T) {
 	d := Database{changesDialer: makeEmptyMock(), changesFailDelay: 5}
-	err := d.Changes(func(io.Reader) int64 { return -1 },
+	err := d.Changes(func(io.Reader) interface{} { return nil },
 		map[string]interface{}{
 			"since":     858245,
 			"start_key": "x",

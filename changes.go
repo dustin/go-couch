@@ -1,6 +1,7 @@
 package couch
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -18,7 +19,23 @@ import (
 //
 // The handler may return at any time to restart the stream from the
 // sequence number in indicated in its return value.
-type ChangeHandler func(r io.Reader) int64
+type ChangeHandler func(r io.Reader) interface{}
+
+type ChangedRev struct {
+	Revision string `json:"rev"`
+}
+
+type Change struct {
+	Sequence    interface{}  `json:"seq"`
+	Id          string       `json:"id"`
+	ChangedRevs []ChangedRev `json:"changes"`
+	Deleted     bool         `json:"deleted"`
+}
+
+type Changes struct {
+	Results      []Change    `json:"results"`
+	LastSequence interface{} `json:"last_seq"`
+}
 
 const defaultChangeDelay = time.Second
 
@@ -65,6 +82,14 @@ func i64defopt(opts map[string]interface{}, k string, def int64) int64 {
 	return rv
 }
 
+func ReadAllChanges(reader io.Reader) (Changes, error) {
+	changes := Changes{}
+	decoder := json.NewDecoder(reader)
+	err := decoder.Decode(&changes)
+	return changes, err
+
+}
+
 // Changes feeds a ChangeHandler a CouchDB changes feed.
 //
 // The handler receives the body of the stream and is expected to consume
@@ -72,7 +97,7 @@ func i64defopt(opts map[string]interface{}, k string, def int64) int64 {
 func (p Database) Changes(handler ChangeHandler,
 	options map[string]interface{}) error {
 
-	largest := i64defopt(options, "since", 0)
+	since := options["since"]
 
 	heartbeatTime := i64defopt(options, "heartbeat", 5000)
 
@@ -81,13 +106,17 @@ func (p Database) Changes(handler ChangeHandler,
 		timeout = time.Millisecond * time.Duration(heartbeatTime*2)
 	}
 
-	for largest >= 0 {
+	for {
 		params := url.Values{}
 		for k, v := range options {
+			if v == nil {
+				// skip any nil values, eg if "since" -> nil
+				continue
+			}
 			params.Set(k, fmt.Sprintf("%v", v))
 		}
-		if largest > 0 {
-			params.Set("since", fmt.Sprintf("%v", largest))
+		if since != nil {
+			params.Set("since", fmt.Sprintf("%v", since))
 		}
 
 		if heartbeatTime > 0 {
@@ -118,8 +147,13 @@ func (p Database) Changes(handler ChangeHandler,
 				defer conn.Close()
 
 				tc := timeoutClient{resp.Body, conn, timeout}
-				largest = handler(&tc)
+				since = handler(&tc)
 			}()
+			if since == nil {
+				// handler wants to end changes feed
+				break
+			}
+
 		} else {
 			log.Printf("Error in stream: %v", err)
 			time.Sleep(p.changesFailDelay)
