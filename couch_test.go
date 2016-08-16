@@ -108,7 +108,8 @@ func TestUnmarshURLError(t *testing.T) {
 	err := unmarshalURL("http://%", nil)
 	if err == nil {
 		t.Fatalf("Successfully unmarshalled from nothing?")
-	} else if !strings.Contains(err.Error(), "hexadecimal escape") {
+	} else if !(strings.Contains(err.Error(), "hexadecimal escape") ||
+		strings.Contains(err.Error(), "invalid URL escape")) {
 		t.Fatalf("Unexpected error: %q", err.Error())
 	}
 }
@@ -168,7 +169,8 @@ func TestInteractError(t *testing.T) {
 	_, err := interact("POST", "http://%", map[string][]string{}, nil, nil)
 	if err == nil {
 		t.Fatalf("Successfully interacted with nothing?")
-	} else if !strings.Contains(err.Error(), "hexadecimal escape") {
+	} else if !(strings.Contains(err.Error(), "hexadecimal escape") ||
+		strings.Contains(err.Error(), "invalid URL escape")) {
 		t.Fatalf("Unexpected error: %q", err.Error())
 	}
 }
